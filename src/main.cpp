@@ -183,7 +183,7 @@ int main()
 
     while (!quitRequested && !WindowShouldClose())
     {
-        ui.Update(GetFrameTime());
+        ui.Update(GetFrameTime()); //tunng
 
         if (state == AppState::MainMenu) //tung
         {
