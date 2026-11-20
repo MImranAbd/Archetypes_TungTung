@@ -69,11 +69,32 @@ void UI::DrawOverworld(const Ball& ball, const Enemy& enemy, const Party& party,
     {
         const float bx = ball.GetPixelX();
         const float by = ball.GetPixelY();
-        const int tintIndex = party.GetActiveIndex();
+        const int leader = 0;
+        const bool moving = ball.IsMoving();
+        const Texture2D sheet = moving
+            ? PartyWalkSheets[leader]
+            : PartyIdleSheets[leader];
 
-        DrawTexturePro(PartyIdle, { 0.0f, 0.0f, 32.0f, 32.0f },
-            { bx - 21.0f, by - 21.0f, 42.0f, 42.0f },
-            { 0.0f, 0.0f }, 0.0f, PartyTints[tintIndex]);
+        int row = 0;
+
+        if (ball.GetFacingY() < 0)
+            row = 4;
+        else if (ball.GetFacingY() == 0)
+            row = 2;
+
+        const int frame = static_cast<int>(
+            GetTime() * (moving ? 10.0f : 4.0f)) % 4;
+
+        const Rectangle source = {
+            static_cast<float>(frame * 32),
+            static_cast<float>(row * 32),
+            32.0f,
+            32.0f
+        };
+
+        DrawTexturePro(sheet, source,
+            { bx - 25.0f, by - 25.0f, 50.0f, 50.0f },
+            { 0.0f, 0.0f }, 0.0f, PartyTints[leader]);
 
         if (enemy.IsActive())
         {

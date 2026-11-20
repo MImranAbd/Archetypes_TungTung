@@ -206,7 +206,9 @@ namespace BattleUi
         const bool active = (index == activeIndex);
         const bool attacking = (index == attackingIndex);
         const float scale = 130.0f;
-        const Texture2D texture = attacking ? PartyAttack : PartyIdle;
+        const Texture2D texture = attacking
+            ? PartyAttackSheets[index]
+            : PartyIdleSheets[index];
 
         if (member.hp <= 0)
         {
@@ -319,7 +321,7 @@ namespace BattleUi
 
             if (SpritesLoaded)
             {
-                DrawTexturePro(PartyPortrait, { 0.0f, 0.0f, 32.0f, 32.0f },
+                DrawTexturePro(PartyIdleSheets[i], { 0.0f, 0.0f, 32.0f, 32.0f },
                     { static_cast<float>(cardX + 10), static_cast<float>(cardY + 12), 54.0f, 54.0f },
                     { 0.0f, 0.0f }, 0.0f, PartyTints[i]);
             }
@@ -377,13 +379,15 @@ namespace BattleUi
 
         int y = 150;
 
-        for (const Character& member : party.Members())
+        for (int i = 0; i < static_cast<int>(party.Members().size()); i++)
         {
+            const Character& member = party.Members()[i];
+
             if (SpritesLoaded)
             {
-                DrawTexturePro(PartyPortrait, { 0.0f, 0.0f, 32.0f, 32.0f },
+                DrawTexturePro(PartyIdleSheets[i], { 0.0f, 0.0f, 32.0f, 32.0f },
                     { 1180.0f, static_cast<float>(y), 46.0f, 46.0f },
-                    { 0.0f, 0.0f }, 0.0f, WHITE);
+                    { 0.0f, 0.0f }, 0.0f, PartyTints[i]);
             }
 
             UiDrawText(member.name, 1240, y + 4, 24, Theme::Ink, true);

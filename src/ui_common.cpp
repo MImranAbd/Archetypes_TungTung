@@ -4,6 +4,7 @@
 
 #include <raylib.h>
 #include "raygui.h"
+#include <string>
 
 using namespace UiInternal;
 
@@ -11,16 +12,18 @@ namespace UiInternal
 {
     Font FontRegular;
     Font FontBold;
-    Texture2D PartyIdle;
-    Texture2D PartyAttack;
-    Texture2D PartyPortrait;
+    Texture2D PartyIdleSheets[4] = {};
+    Texture2D PartyWalkSheets[4] = {};
+    Texture2D PartyAttackSheets[4] = {};
     Texture2D Slime;
     bool SpritesLoaded = false;
 
+    const char* const PartyFolders[4] = { "ELIZA", "ARES", "LEO", "TROY" };
+
     const Color PartyTints[4] = {
         WHITE,
-        { 205, 160, 220, 255 },
-        { 160, 205, 170, 255 },
+        { 185, 205, 245, 255 },
+        { 245, 225, 170, 255 },
         { 235, 190, 165, 255 }
     };
 
@@ -92,17 +95,35 @@ UI::UI()
     SetTextureFilter(FontBold.texture, TEXTURE_FILTER_BILINEAR);
     GuiSetFont(FontRegular);
 
-    PartyIdle = LoadTexture("res/draw/Side_stand.png");
-    PartyAttack = LoadTexture("res/draw/Punch.png");
-    PartyPortrait = LoadTexture("res/draw/Stand.png");
+    for (int i = 0; i < 4; i++)
+    {
+        const std::string base = std::string("res/draw/Character/")
+            + PartyFolders[i] + "/16x32 ";
+
+        PartyIdleSheets[i] = LoadTexture((base + "Idle-Sheet.png").c_str());
+        PartyWalkSheets[i] = LoadTexture((base + "Walk-Sheet.png").c_str());
+        PartyAttackSheets[i] = LoadTexture((base + "Attack-Sheet.png").c_str());
+    }
+
     Slime = LoadTexture("res/draw/Slime.png");
 
-    SpritesLoaded = PartyIdle.id > 0 && PartyAttack.id > 0 &&
-        PartyPortrait.id > 0 && Slime.id > 0;
+    SpritesLoaded = Slime.id > 0;
 
-    if (PartyIdle.id > 0) SetTextureFilter(PartyIdle, TEXTURE_FILTER_POINT);
-    if (PartyAttack.id > 0) SetTextureFilter(PartyAttack, TEXTURE_FILTER_POINT);
-    if (PartyPortrait.id > 0) SetTextureFilter(PartyPortrait, TEXTURE_FILTER_POINT);
+    for (int i = 0; i < 4; i++)
+    {
+        SpritesLoaded = SpritesLoaded &&
+            PartyIdleSheets[i].id > 0 &&
+            PartyWalkSheets[i].id > 0 &&
+            PartyAttackSheets[i].id > 0;
+    }
+
+    for (int i = 0; i < 4; i++)
+    {
+        if (PartyIdleSheets[i].id > 0) SetTextureFilter(PartyIdleSheets[i], TEXTURE_FILTER_POINT);
+        if (PartyWalkSheets[i].id > 0) SetTextureFilter(PartyWalkSheets[i], TEXTURE_FILTER_POINT);
+        if (PartyAttackSheets[i].id > 0) SetTextureFilter(PartyAttackSheets[i], TEXTURE_FILTER_POINT);
+    }
+
     if (Slime.id > 0) SetTextureFilter(Slime, TEXTURE_FILTER_POINT);
 
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);

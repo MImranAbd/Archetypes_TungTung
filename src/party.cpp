@@ -38,7 +38,7 @@ Party::Party()
     , money(0)
 {
     members.push_back(MakeCharacter(
-        "Rook", Element::Physical, Element::Ice, 12, 3, 2,
+        "Eliza", Element::Physical, Element::Ice, 12, 3, 2,
         {
             std::make_shared<SlashSkill>(),
             std::make_shared<TarukajaSkill>(),
@@ -48,7 +48,7 @@ Party::Party()
         }));
 
     members.push_back(MakeCharacter(
-        "Mire", Element::Ice, Element::Fire, 10, 3, 1,
+        "Ares", Element::Ice, Element::Fire, 10, 3, 1,
         {
             std::make_shared<BufuSkill>(),
             std::make_shared<RakundaSkill>(),
@@ -58,7 +58,7 @@ Party::Party()
         }));
 
     members.push_back(MakeCharacter(
-        "Sable", Element::Fire, Element::Ice, 11, 3, 1,
+        "Leo", Element::Fire, Element::Ice, 11, 3, 1,
         {
             std::make_shared<AgiSkill>(),
             std::make_shared<TarundaSkill>(),
@@ -68,7 +68,7 @@ Party::Party()
         }));
 
     members.push_back(MakeCharacter(
-        "Wren", Element::Physical, Element::Fire, 14, 2, 3,
+        "Troy", Element::Physical, Element::Fire, 14, 2, 3,
         {
             std::make_shared<StrikeSkill>(),
             std::make_shared<SukukajaSkill>(),

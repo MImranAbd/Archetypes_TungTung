@@ -6,9 +6,9 @@ namespace UiInternal
 {
     extern Font FontRegular;
     extern Font FontBold;
-    extern Texture2D PartyIdle;
-    extern Texture2D PartyAttack;
-    extern Texture2D PartyPortrait;
+    extern Texture2D PartyIdleSheets[4];
+    extern Texture2D PartyWalkSheets[4];
+    extern Texture2D PartyAttackSheets[4];
     extern Texture2D Slime;
     extern bool SpritesLoaded;
     extern const Color PartyTints[4];
