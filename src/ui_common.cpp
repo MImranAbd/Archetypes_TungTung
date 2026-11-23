@@ -22,7 +22,119 @@ namespace UiInternal
     Texture2D MenuPolygon = {};
     Texture2D MenuFace = {};
     Texture2D MenuTitles[6] = {};
-    Texture2D Slime;
+    EnemyAnimData EnemyAnims[EnemyKindCount] = {};
+
+    EnemyAnimData LoadEnemyAnimation(const char* path)
+    {
+        EnemyAnimData anim = {};
+        Image sheet = LoadImage(path);
+
+        if (sheet.data == nullptr)
+            return anim;
+
+        const int cell = 100;
+        const int columns = sheet.width / cell;
+        const int rows = sheet.height / cell;
+
+        if (columns < 1 || rows < 3)
+        {
+            UnloadImage(sheet);
+            return anim;
+        }
+
+        const int idleFrames = (columns < 6) ? columns : 6;
+        const int attackFrame = (idleFrames > 3) ? 3 : idleFrames - 1;
+
+        Color* pixels = LoadImageColors(sheet);
+        int minX = cell;
+        int minY = cell;
+        int maxX = -1;
+        int maxY = -1;
+
+        auto includeFrame = [&](int row, int column)
+        {
+            for (int y = 0; y < cell; y++)
+            {
+                for (int x = 0; x < cell; x++)
+                {
+                    const int px = column * cell + x;
+                    const int py = row * cell + y;
+
+                    if (pixels[py * sheet.width + px].a == 0)
+                        continue;
+
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        };
+
+        for (int c = 0; c < idleFrames; c++)
+            includeFrame(0, c);
+
+        includeFrame(2, attackFrame);
+
+        UnloadImageColors(pixels);
+
+        if (maxX < minX || maxY < minY)
+        {
+            UnloadImage(sheet);
+            return anim;
+        }
+
+        const int cropWidth = maxX - minX + 1;
+        const int cropHeight = maxY - minY + 1;
+
+        Image strip = GenImageColor(idleFrames * cropWidth, cropHeight * 2, BLANK);
+
+        auto drawFlippedFrame = [&](int row, int column, int destX, int destY)
+        {
+            const Rectangle source = {
+                (float)(column * cell + minX),
+                (float)(row * cell + minY),
+                (float)cropWidth,
+                (float)cropHeight
+            };
+
+            Image frame = ImageFromImage(sheet, source);
+            ImageFlipHorizontal(&frame);
+
+            const Rectangle frameSource = {
+                0.0f, 0.0f, (float)cropWidth, (float)cropHeight
+            };
+            const Rectangle dest = {
+                (float)destX,
+                (float)destY,
+                (float)cropWidth,
+                (float)cropHeight
+            };
+
+            ImageDraw(&strip, frame, frameSource, dest, WHITE);
+            UnloadImage(frame);
+        };
+
+        for (int c = 0; c < idleFrames; c++)
+            drawFlippedFrame(0, c, c * cropWidth, 0);
+
+        drawFlippedFrame(2, attackFrame, attackFrame * cropWidth, cropHeight);
+
+        UnloadImage(sheet);
+
+        anim.texture = LoadTextureFromImage(strip);
+        UnloadImage(strip);
+
+        if (anim.texture.id > 0)
+            SetTextureFilter(anim.texture, TEXTURE_FILTER_POINT);
+
+        anim.frameCount = idleFrames;
+        anim.frameWidth = cropWidth;
+        anim.frameHeight = cropHeight;
+        anim.attackFrame = attackFrame;
+
+        return anim;
+    }
 
     Texture2D LoadWhiteMenuTitle(const char* path)
     {
@@ -163,7 +275,11 @@ UI::UI()
         PartyAttackPoses[i] = LoadTexture(attackPaths[i]);
     }
 
-    Slime = LoadTexture("res/draw/Slime.png");
+    for (int i = 0; i < EnemyKindCount; i++)
+    {
+        EnemyAnims[i] = LoadEnemyAnimation(
+            GetEnemyDef(static_cast<EnemyKind>(i)).spritePath);
+    }
 
     MenuPortrait = LoadTexture("res/draw/Menu/image 4.png");
     MenuPolygon = LoadTexture("res/draw/Menu/Polygon 37.png");
@@ -185,7 +301,7 @@ UI::UI()
     if (MenuPolygon.id > 0) SetTextureFilter(MenuPolygon, TEXTURE_FILTER_POINT);
     if (MenuFace.id > 0) SetTextureFilter(MenuFace, TEXTURE_FILTER_POINT);
 
-    SpritesLoaded = Slime.id > 0 && ElizaStand.id > 0;
+    SpritesLoaded = ElizaStand.id > 0;
 
     for (int i = 0; i < 4; i++)
     {
@@ -204,7 +320,6 @@ UI::UI()
     }
 
     if (ElizaStand.id > 0) SetTextureFilter(ElizaStand, TEXTURE_FILTER_POINT);
-    if (Slime.id > 0) SetTextureFilter(Slime, TEXTURE_FILTER_POINT);
 
     GuiSetStyle(DEFAULT, TEXT_SIZE, 20);
     GuiSetStyle(DEFAULT, TEXT_PADDING, 8);

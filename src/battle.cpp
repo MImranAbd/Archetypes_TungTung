@@ -27,6 +27,8 @@ Battle::Battle(Party& party, Inventory& inventory, int floorNumber,
     , escaped(false)
     , playerPoints(0)
     , enemyPoints(0)
+    , playerHalfIcons(0)
+    , enemyHalfIcons(0)
     , selectedTarget(0)
     , selectedAlly(0)
     , slashActor(0)
@@ -83,7 +85,15 @@ Battle::Battle(Party& party, Inventory& inventory, int floorNumber,
         enemyBaseDamage = enemyDamageCap;
 
     for (int i = 0; i < enemyCount; i++)
-        enemies.emplace_back(0, 0, enemyHp);
+    {
+        const EnemyKind kind = RandomEnemyKindForFloor(floorNumber, isElite);
+        const EnemyDef& def = GetEnemyDef(kind);
+
+        int hp = enemyHp + def.hpBonus;
+        if (hp < 1) hp = 1;
+
+        enemies.emplace_back(0, 0, hp, kind);
+    }
 
     weaknessKnown.assign(enemyCount, false);
 
@@ -95,6 +105,8 @@ Battle::Battle(Party& party, Inventory& inventory, int floorNumber,
 
     playerPoints = LivingPartyCount() * pointsPerMember;
     enemyPoints = LivingEnemyCount() * pointsPerMember;
+    playerHalfIcons = 0;
+    enemyHalfIcons = 0;
 
     std::cout.setf(std::ios::unitbuf);
 
@@ -109,7 +121,8 @@ Battle::Battle(Party& party, Inventory& inventory, int floorNumber,
 
     for (int i = 0; i < static_cast<int>(enemies.size()); i++)
     {
-        std::cout << " E" << (i + 1) << " HP " << enemies[i].GetHp() << "/" << enemies[i].GetMaxHp()
+        std::cout << " E" << (i + 1) << " " << EnemyKindName(enemies[i].GetKind())
+                  << " HP " << enemies[i].GetHp() << "/" << enemies[i].GetMaxHp()
                   << " WEAKNESS " << ElementName(enemies[i].GetWeakness()) << "\n";
     }
 
@@ -357,6 +370,7 @@ void Battle::StartPlayerTurn()
     }
 
     playerPoints = LivingPartyCount() * pointsPerMember;
+    playerHalfIcons = 0;
     phase = Phase::PlayerTurn;
     ResetMenu();
 
@@ -366,6 +380,7 @@ void Battle::StartPlayerTurn()
 void Battle::StartEnemyTurn()
 {
     enemyPoints = LivingEnemyCount() * pointsPerMember * (isElite ? 2 : 1);
+    enemyHalfIcons = 0;
     phase = Phase::EnemyTurn;
     enemyTurnIndex = FindNextAliveEnemy(0);
 
@@ -689,6 +704,16 @@ int Battle::GetEnemyPoints() const
     return enemyPoints;
 }
 
+int Battle::GetPlayerHalfIcons() const
+{
+    return playerHalfIcons;
+}
+
+int Battle::GetEnemyHalfIcons() const
+{
+    return enemyHalfIcons;
+}
+
 int Battle::GetTurnNumber() const
 {
     return turnNumber;
@@ -868,6 +893,7 @@ const std::string& Battle::GetMessage() const
 {
     return message;
 }
+
 
 
 

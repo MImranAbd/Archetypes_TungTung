@@ -44,7 +44,9 @@ Party::Party()
             std::make_shared<TarukajaSkill>(),
             std::make_shared<RakukajaSkill>(),
             std::make_shared<CleaveSkill>(),
-            std::make_shared<MatarukajaSkill>()
+            std::make_shared<MatarukajaSkill>(),
+            std::make_shared<SkewerSkill>(),
+            std::make_shared<HeatWaveSkill>()
         }));
 
     members.push_back(MakeCharacter(
@@ -54,7 +56,8 @@ Party::Party()
             std::make_shared<RakundaSkill>(),
             std::make_shared<DiaSkill>(),
             std::make_shared<BufulaSkill>(),
-            std::make_shared<MazioSkill>()
+            std::make_shared<MazioSkill>(),
+            std::make_shared<DiaramaSkill>()
         }));
 
     members.push_back(MakeCharacter(
@@ -64,7 +67,8 @@ Party::Party()
             std::make_shared<TarundaSkill>(),
             std::make_shared<MediaSkill>(),
             std::make_shared<AgilaoSkill>(),
-            std::make_shared<MaragiSkill>()
+            std::make_shared<MaragiSkill>(),
+            std::make_shared<MaragionSkill>()
         }));
 
     members.push_back(MakeCharacter(
@@ -74,7 +78,8 @@ Party::Party()
             std::make_shared<SukukajaSkill>(),
             std::make_shared<SukundaSkill>(),
             std::make_shared<MightyBlowSkill>(),
-            std::make_shared<MasukukajaSkill>()
+            std::make_shared<MasukukajaSkill>(),
+            std::make_shared<RampageSkill>()
         }));
 }
 

@@ -134,9 +134,15 @@ int main()
         int newEnemyY = newSpawnY;
 
         if (map.FindFreeCell(newEnemyX, newEnemyY, newSpawnX, newSpawnY, 8))
+        {
             enemy.Reset(newEnemyX, newEnemyY, 6);
+            enemy.SetKind(RandomEnemyKindForFloor(dungeonFloor,
+                dungeonFloor % 10 == 0));
+        }
         else
+        {
             enemy.SetActive(false);
+        }
 
         pendingBattle = false;
         pendingAmbush = false;
@@ -634,7 +640,12 @@ int main()
             }
             else
             {
-                if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE) ||
+                if (IsKeyPressed(KEY_F9))
+                {
+                    dungeonFloor = 100;
+                    loadDungeon();
+                }
+                else if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE) ||
                     IsKeyPressed(KEY_TAB))
                 {
                     pauseOpen = true;

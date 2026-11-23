@@ -21,10 +21,90 @@ inline const char* ElementName(Element element)
     return "???";
 }
 
+enum class EnemyKind
+{
+    Slime,
+    Bat,
+    Skeleton,
+    SkeletonArcher,
+    Archer,
+    GreatswordSkeleton,
+    ArmoredSkeleton,
+    Soldier,
+    Swordsman,
+    Lancer,
+    Knight,
+    KnightTemplar,
+    Orc,
+    EliteOrc,
+    ArmoredOrc,
+    ArmoredAxeman,
+    OrcRider,
+    Werewolf,
+    Werebear,
+    Wizard,
+    Priest,
+    Necromancer,
+    Demon,
+    BloodMonster,
+    Count
+};
+
+constexpr int EnemyKindCount = static_cast<int>(EnemyKind::Count);
+
+enum class EnemyActionKind
+{
+    BasicAttack,
+    Damage,
+    DamageAll,
+    Drain,
+    HealSelf,
+    HealAlly,
+    HealAllies,
+    BuffSelf,
+    BuffAllies,
+    DebuffParty
+};
+
+enum class EnemyStat
+{
+    None,
+    Attack,
+    Defense,
+    Evasion,
+    Accuracy
+};
+
+struct EnemySkillDef
+{
+    const char* name;
+    EnemyActionKind kind;
+    Element element;
+    EnemyStat stat;
+    int power;
+    float accuracy;
+    int cost;
+};
+
+struct EnemyDef
+{
+    const char* name;
+    const char* spritePath;
+    Element weakness;
+    int hpBonus;
+    int attackBonus;
+    EnemySkillDef skills[2];
+};
+
+const EnemyDef& GetEnemyDef(EnemyKind kind);
+const char* EnemyKindName(EnemyKind kind);
+EnemyKind RandomEnemyKindForFloor(int floorNumber, bool elite);
+
 class Enemy
 {
 public:
-    Enemy(int startGridX, int startGridY, int maxHp = 6);
+    Enemy(int startGridX, int startGridY, int maxHp = 6,
+        EnemyKind kind = EnemyKind::Slime);
     void Update(int targetGridX, int targetGridY, const GameMap& map);
     void Draw() const;
 
@@ -38,7 +118,10 @@ public:
     bool IsActive() const;
     void SetActive(bool value);
     void TakeDamage(int amount);
+    void Heal(int amount);
     void Reset(int startGridX, int startGridY, int maxHp = 6);
+    void SetKind(EnemyKind kind);
+    EnemyKind GetKind() const;
     Element GetWeakness() const;
 
     static constexpr int cellSize = 40;
@@ -54,5 +137,6 @@ private:
     int hp;
     int maxHp;
     bool active;
+    EnemyKind kind;
     Element weakness;
 };

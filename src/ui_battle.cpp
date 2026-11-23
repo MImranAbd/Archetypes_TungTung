@@ -406,7 +406,11 @@ void UI::DrawBattle(Battle& battle)
                     enemyTint = Fade(buffColor, 0.45f * buffAlpha);
             }
 
-            DrawEnemyActor(i, pos, showEnemyCursor, enemies[i], enemyTint);
+            const bool enemyActing = (bannerTimer > 0.0f &&
+                battle.GetLastActorEnemy() == i);
+
+            DrawEnemyActor(i, pos, showEnemyCursor, enemies[i], enemyTint,
+                enemyActing);
         }
     }
 
@@ -545,9 +549,12 @@ void UI::DrawBattle(Battle& battle)
     DrawPageFrame();
 
     const int iconPoints = playerTurn ? battle.GetPlayerPoints() : battle.GetEnemyPoints();
-    const int maxIcons = playerTurn ? livingAllies : livingEnemies;
+    const int halfIcons = playerTurn ? battle.GetPlayerHalfIcons() : battle.GetEnemyHalfIcons();
+    const int maxIcons = playerTurn
+        ? livingAllies
+        : livingEnemies * (battle.IsElite() ? 2 : 1);
 
-    DrawTurnSquares(iconPoints, maxIcons, 40, 26,
+    DrawTurnSquares(iconPoints, halfIcons, maxIcons, 40, 26,
         playerTurn ? Theme::Ink : Theme::Red);
 
     const int titleX = 40 + maxIcons * 63 + 18;
@@ -556,10 +563,10 @@ void UI::DrawBattle(Battle& battle)
     UiDrawText(TextFormat("Turn %d / %s", battle.GetTurnNumber(),
         playerTurn ? "Player" : "Enemy"), titleX, 62, 20, Theme::Muted);
 
-    const Rectangle descriptionBox = { 680.0f, 20.0f, 620.0f, 100.0f };
+    const Rectangle descriptionBox = { 610.0f, 14.0f, 750.0f, 104.0f };
     DrawRectangleRec(descriptionBox, Theme::Paper);
     DrawRectangleLinesEx(descriptionBox, 2.0f, Theme::Ink);
-    DrawWrappedText(battle.GetMessage().c_str(), 696, 32, 588, 18, Theme::Ink);
+    DrawWrappedText(battle.GetMessage().c_str(), 628, 28, 714, 22, Theme::Ink);
 
     const char* battleTitle = battle.IsElite() ? "TREMENDOUS FOE" : "RANDOM BATTLE";
     UiDrawText(battleTitle, width - 40 - UiMeasureText(battleTitle, 44, true),
@@ -629,16 +636,49 @@ void UI::DrawBattle(Battle& battle)
     {
         UiDrawText("SKILLS", 238, 802, 18, Theme::Gold, true);
 
-        int row = 0;
+        std::vector<int> unlocked;
 
         for (int i = 0; i < static_cast<int>(active.skills.size()); i++)
         {
-            const Skill& skill = *active.skills[i];
+            if (active.level >= active.skills[i]->GetLevelRequired())
+                unlocked.push_back(i);
+        }
 
-            if (active.level < skill.GetLevelRequired()) continue;
+        const int visibleRows = 5;
+        int selectedPos = 0;
 
+        for (int i = 0; i < static_cast<int>(unlocked.size()); i++)
+        {
+            if (unlocked[i] == battle.GetSkillMenuIndex())
+            {
+                selectedPos = i;
+                break;
+            }
+        }
+
+        int start = 0;
+
+        if (static_cast<int>(unlocked.size()) > visibleRows)
+        {
+            start = selectedPos - visibleRows / 2;
+
+            if (start < 0) start = 0;
+            if (start + visibleRows > static_cast<int>(unlocked.size()))
+                start = static_cast<int>(unlocked.size()) - visibleRows;
+        }
+
+        for (int row = 0; row < visibleRows; row++)
+        {
+            const int pos = start + row;
+
+            if (pos >= static_cast<int>(unlocked.size()))
+                break;
+
+            const int skillIndex = unlocked[pos];
+            const Skill& skill = *active.skills[skillIndex];
             const int y = 840 + row * 38;
-            const bool selectedSkill = (battle.GetSkillMenuIndex() == i);
+            const bool selectedSkill =
+                (battle.GetSkillMenuIndex() == skillIndex);
 
             if (selectedSkill)
             {
@@ -650,9 +690,13 @@ void UI::DrawBattle(Battle& battle)
             UiDrawText(skill.GetName(), 268, y - 5, 22, Theme::Ink, selectedSkill);
             UiDrawText(TextFormat("LV %d", skill.GetLevelRequired()),
                 590, y - 2, 14, Theme::Muted);
-
-            row++;
         }
+
+        if (start > 0)
+            UiDrawText("^", 666, 800, 16, Theme::Muted);
+
+        if (start + visibleRows < static_cast<int>(unlocked.size()))
+            UiDrawText("v", 666, 1020, 16, Theme::Muted);
     }
     else if (showItemList)
     {

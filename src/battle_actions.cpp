@@ -10,6 +10,78 @@ using namespace BattleInternal;
 
 namespace
 {
+    void SpendHalfPoints(int& points, int& halfIcons, bool grantsHalf)
+    {
+        if (points <= 0)
+        {
+            halfIcons = 0;
+            return;
+        }
+
+        const int fullIcons = (points - halfIcons) / 2;
+
+        if (grantsHalf)
+        {
+            if (fullIcons > 0) halfIcons++;
+            else if (halfIcons > 0) halfIcons--;
+        }
+        else
+        {
+            if (halfIcons > 0) halfIcons--;
+            else if (fullIcons > 0) halfIcons++;
+        }
+
+        points -= 1;
+
+        if (points < 0) points = 0;
+        if (points == 0) halfIcons = 0;
+    }
+
+    void SpendFullPoints(int& points, int& halfIcons)
+    {
+        const int fullIcons = (points - halfIcons) / 2;
+
+        if (fullIcons > 0)
+        {
+        }
+        else if (halfIcons >= 2)
+        {
+            halfIcons -= 2;
+        }
+        else
+        {
+            halfIcons = 0;
+        }
+
+        points -= 2;
+
+        if (points < 0) points = 0;
+        if (points == 0) halfIcons = 0;
+    }
+
+    void SpendMissPoints(int& points, int& halfIcons)
+    {
+        const int fullIcons = (points - halfIcons) / 2;
+
+        if (halfIcons >= 2)
+        {
+            halfIcons -= 2;
+        }
+        else if (halfIcons == 1)
+        {
+            halfIcons = (fullIcons > 0) ? 1 : 0;
+        }
+        else
+        {
+            halfIcons = 0;
+        }
+
+        points -= 2;
+
+        if (points < 0) points = 0;
+        if (points == 0) halfIcons = 0;
+    }
+
     Color SupportEffectColor(SkillKind kind)
     {
         switch (kind)
@@ -67,8 +139,7 @@ void Battle::Defend()
 
     message = std::string(party.Active().name) + " braces the party. GUARD!";
 
-    playerPoints -= 2;
-    if (playerPoints < 0) playerPoints = 0;
+    SpendPlayerFullPoints();
 
     LogState();
     RotateCharacter();
@@ -100,6 +171,36 @@ void Battle::AddActionText(const std::string& text, int target, bool onParty, Co
     actionTexts.push_back(ActionText{
         text, target, onParty, color, supportTextDuration
     });
+}
+
+void Battle::SpendPlayerHalfPoint(bool grantsHalf)
+{
+    SpendHalfPoints(playerPoints, playerHalfIcons, grantsHalf);
+}
+
+void Battle::SpendPlayerFullPoints()
+{
+    SpendFullPoints(playerPoints, playerHalfIcons);
+}
+
+void Battle::SpendPlayerMissPoints()
+{
+    SpendMissPoints(playerPoints, playerHalfIcons);
+}
+
+void Battle::SpendEnemyHalfPoint(bool grantsHalf)
+{
+    SpendHalfPoints(enemyPoints, enemyHalfIcons, grantsHalf);
+}
+
+void Battle::SpendEnemyFullPoints()
+{
+    SpendFullPoints(enemyPoints, enemyHalfIcons);
+}
+
+void Battle::SpendEnemyMissPoints()
+{
+    SpendMissPoints(enemyPoints, enemyHalfIcons);
 }
 
 void Battle::SetBuffEffect(SkillKind kind, bool onParty, int target)
@@ -428,8 +529,10 @@ void Battle::UseSkill(int skillIndex)
     std::cout << "[PARTY] " << actor.name << " uses " << skill.GetName() << " | "
               << message << "\n";
 
-    playerPoints -= 2;
-    if (playerPoints < 0) playerPoints = 0;
+    if (playerHalfIcons > 0)
+        SpendPlayerHalfPoint(false);
+    else
+        SpendPlayerFullPoints();
 
     LogState();
     RotateCharacter();
@@ -485,8 +588,7 @@ bool Battle::UseItem(ItemType type, int targetIndex)
     std::cout << "[ITEM] " << target.name << " recovers " << healed
               << " HP with " << ItemName(type) << "\n";
 
-    playerPoints -= 2;
-    if (playerPoints < 0) playerPoints = 0;
+    SpendPlayerFullPoints();
 
     const Color supportColor = SupportEffectColor(SkillKind::Heal);
 
@@ -554,6 +656,10 @@ void Battle::PlayerAttack(const Skill& skill)
     if (anxious) hitChance -= 0.25f;
     if (enemySmirk) hitChance -= 0.30f;
     if (enemyAnxious) hitChance += 0.20f;
+    if (partyBuffs[actorIndex].enemyAccuracyDown.stacks > 0)
+        hitChance -= 0.15f * partyBuffs[actorIndex].enemyAccuracyDown.stacks;
+    if (enemyBuffs[selectedTarget].evasionUp.stacks > 0)
+        hitChance -= 0.15f * enemyBuffs[selectedTarget].evasionUp.stacks;
 
     if (hitChance < 0.05f) hitChance = 0.05f;
     if (hitChance > 0.99f) hitChance = 0.99f;
@@ -562,7 +668,7 @@ void Battle::PlayerAttack(const Skill& skill)
 
     if (!Chance(hitChance))
     {
-        playerPoints -= 4;
+        SpendPlayerMissPoints();
 
         message = actor.name + std::string(" uses ") + skill.GetName() + " on "
             + targetName + " - MISS!";
@@ -589,10 +695,15 @@ void Battle::PlayerAttack(const Skill& skill)
         int damage = actor.attack + skill.GetPower();
         if (partyBuffs[actorIndex].attackUp.stacks > 0)
             damage += partyBuffs[actorIndex].attackUp.stacks;
+        if (partyBuffs[actorIndex].enemyAttackDown.stacks > 0)
+            damage -= partyBuffs[actorIndex].enemyAttackDown.stacks;
         if (enemyBuffs[selectedTarget].enemyDefenseDown.stacks > 0)
             damage += enemyBuffs[selectedTarget].enemyDefenseDown.stacks;
+        if (enemyBuffs[selectedTarget].defenseUp.stacks > 0)
+            damage -= enemyBuffs[selectedTarget].defenseUp.stacks;
         if (weak) damage += 1;
         if (crit) damage += 1;
+        if (damage < 1) damage = 1;
 
         target.TakeDamage(damage);
         slashTimer = 0.9f;
@@ -617,7 +728,10 @@ void Battle::PlayerAttack(const Skill& skill)
             message += " SMIRK!";
         }
 
-        playerPoints -= (weak || crit) ? 1 : 2;
+        if (weak || crit)
+            SpendPlayerHalfPoint(true);
+        else
+            SpendPlayerFullPoints();
 
         std::cout << "[PARTY] " << actor.name << " -> " << targetName
                   << " " << ElementName(skill.GetElement()) << " " << damage << " DMG"
@@ -679,13 +793,27 @@ void Battle::PlayerAttackAll(const Skill& skill)
     if (anxious) hitChance -= 0.25f;
     if (enemySmirk) hitChance -= 0.30f;
     if (enemyAnxious) hitChance += 0.20f;
+    if (partyBuffs[actorIndex].enemyAccuracyDown.stacks > 0)
+        hitChance -= 0.15f * partyBuffs[actorIndex].enemyAccuracyDown.stacks;
+
+    int maxEvasion = 0;
+
+    for (int i = 0; i < static_cast<int>(enemies.size()); i++)
+    {
+        if (!enemies[i].IsAlive()) continue;
+
+        if (enemyBuffs[i].evasionUp.stacks > maxEvasion)
+            maxEvasion = enemyBuffs[i].evasionUp.stacks;
+    }
+
+    hitChance -= 0.15f * maxEvasion;
 
     if (hitChance < 0.05f) hitChance = 0.05f;
     if (hitChance > 0.99f) hitChance = 0.99f;
 
     if (!Chance(hitChance))
     {
-        playerPoints -= 4;
+        SpendPlayerMissPoints();
 
         message = actor.name + std::string(" uses ") + skill.GetName()
             + " - MISS!";
@@ -723,10 +851,15 @@ void Battle::PlayerAttackAll(const Skill& skill)
             int damage = actor.attack + skill.GetPower();
             if (partyBuffs[actorIndex].attackUp.stacks > 0)
                 damage += partyBuffs[actorIndex].attackUp.stacks;
+            if (partyBuffs[actorIndex].enemyAttackDown.stacks > 0)
+                damage -= partyBuffs[actorIndex].enemyAttackDown.stacks;
             if (enemyBuffs[i].enemyDefenseDown.stacks > 0)
                 damage += enemyBuffs[i].enemyDefenseDown.stacks;
+            if (enemyBuffs[i].defenseUp.stacks > 0)
+                damage -= enemyBuffs[i].defenseUp.stacks;
             if (weak) damage += 1;
             if (crit) damage += 1;
+            if (damage < 1) damage = 1;
 
             target.TakeDamage(damage);
             AddDamagePopup(i, false, damage, crit, weak);
@@ -765,7 +898,10 @@ void Battle::PlayerAttackAll(const Skill& skill)
             message += " SMIRK!";
         }
 
-        playerPoints -= (anyWeak || anyCrit) ? 1 : 2;
+        if (anyWeak || anyCrit)
+            SpendPlayerHalfPoint(true);
+        else
+            SpendPlayerFullPoints();
 
         slashTimer = 0.9f;
     }
@@ -836,7 +972,7 @@ void Battle::SwitchCharacter()
     if (LivingPartyCount() <= 1) return;
     if (playerPoints <= 0) return;
 
-    playerPoints -= 1;
+    SpendPlayerHalfPoint(false);
     party.SwitchActive();
 
     message = std::string(party.Active().name) + " takes the lead. PASS!";

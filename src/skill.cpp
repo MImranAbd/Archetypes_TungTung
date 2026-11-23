@@ -203,6 +203,30 @@ SukundaSkill::SukundaSkill()
 {
 }
 
+SkewerSkill::SkewerSkill()
+    : Skill("Skewer", SkillKind::Attack, Element::Physical, 3, 3,
+        "A precise thrust that deals heavy physical damage.")
+{
+}
+
+RampageSkill::RampageSkill()
+    : Skill("Rampage", SkillKind::AttackAll, Element::Physical, 2, 4,
+        "A wild assault that strikes all foes.")
+{
+}
+
+DiaramaSkill::DiaramaSkill()
+    : Skill("Diarama", SkillKind::Heal, Element::Ice, 10, 4,
+        "Restores 10 HP to one ally.")
+{
+}
+
+MaragionSkill::MaragionSkill()
+    : Skill("Maragion", SkillKind::AttackAll, Element::Fire, 2, 4,
+        "Heavy fire damage to all foes.")
+{
+}
+
 HeatWaveSkill::HeatWaveSkill()
     : Skill("Heat Wave", SkillKind::AttackAll, Element::Physical, 1, 3,
         "Physical damage to all foes.")

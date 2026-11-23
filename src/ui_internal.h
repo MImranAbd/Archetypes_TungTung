@@ -1,9 +1,19 @@
 #pragma once
 
 #include <raylib.h>
+#include "enemies.h"
 
 namespace UiInternal
 {
+    struct EnemyAnimData
+    {
+        Texture2D texture = {};
+        int frameCount = 0;
+        int frameWidth = 0;
+        int frameHeight = 0;
+        int attackFrame = 0;
+    };
+
     extern Font FontRegular;
     extern Font FontBold;
     extern Texture2D ElizaStand;
@@ -16,7 +26,7 @@ namespace UiInternal
     extern Texture2D MenuPolygon;
     extern Texture2D MenuFace;
     extern Texture2D MenuTitles[6];
-    extern Texture2D Slime;
+    extern EnemyAnimData EnemyAnims[EnemyKindCount];
     extern bool SpritesLoaded;
     extern const Color PartyTints[4];
 

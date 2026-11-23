@@ -27,7 +27,7 @@ namespace BattleUi
         { 1820.0f, 690.0f }
     };
 
-    const float EnemySizes[5] = { 100.0f, 90.0f, 105.0f, 95.0f, 100.0f };
+    const float EnemySizes[5] = { 130.0f, 120.0f, 135.0f, 125.0f, 130.0f };
 
 
     const char* CommandLabel(int index)
@@ -117,15 +117,23 @@ namespace BattleUi
             UiDrawText(line.c_str(), x, lineY, fontSize, color, bold);
     }
 
-    void DrawTurnSquares(int points, int maxIcons, int x, int y, Color fill)
+    void DrawTurnSquares(int points, int halfIcons, int maxIcons, int x, int y,
+        Color fill)
     {
         const int size = 48;
         const int gap = 15;
 
-        for (int i = 0; i < maxIcons; i++)
+        int fullIcons = (points - halfIcons) / 2;
+
+        if (fullIcons < 0) fullIcons = 0;
+        if (halfIcons < 0) halfIcons = 0;
+
+        int slot = 0;
+
+        for (int i = 0; i < fullIcons && slot < maxIcons; i++, slot++)
         {
             const Rectangle rect = {
-                static_cast<float>(x + i * (size + gap)),
+                static_cast<float>(x + slot * (size + gap)),
                 static_cast<float>(y),
                 static_cast<float>(size),
                 static_cast<float>(size)
@@ -133,13 +141,20 @@ namespace BattleUi
 
             DrawRectangleRec(rect, Theme::Paper);
             DrawRectangleLinesEx(rect, 2.0f, Theme::Ink);
+            DrawRectangle(x + slot * (size + gap) + 4, y + 4, size - 8, size - 8, fill);
+        }
 
-            const int value = points - i * 2;
+        for (int i = 0; i < halfIcons && slot < maxIcons; i++, slot++)
+        {
+            const Rectangle rect = {
+                static_cast<float>(x + slot * (size + gap)),
+                static_cast<float>(y),
+                static_cast<float>(size),
+                static_cast<float>(size)
+            };
 
-            if (value >= 2)
-                DrawRectangle(x + i * (size + gap) + 4, y + 4, size - 8, size - 8, fill);
-            else if (value == 1)
-                DrawRectangle(x + i * (size + gap) + 4, y + 4, (size - 8) / 2, size - 8, fill);
+            DrawRectangleRec(rect, Theme::Paper);
+            DrawRectangleLinesEx(rect, 2.0f, fill);
         }
     }
 
@@ -255,23 +270,50 @@ namespace BattleUi
     }
 
     void DrawEnemyActor(int index, Vector2 pos, bool selected, const Enemy& enemy,
-        Color effectTint)
+        Color effectTint, bool acting)
     {
         const float size = EnemySizes[index];
+        const EnemyAnimData& anim =
+            EnemyAnims[static_cast<int>(enemy.GetKind())];
 
         if (enemy.IsAlive())
         {
-            if (SpritesLoaded)
+            if (anim.texture.id > 0 && anim.frameWidth > 0 && anim.frameHeight > 0)
             {
-                DrawTexturePro(Slime, { 0.0f, 0.0f, 32.0f, 32.0f },
-                    { pos.x - size / 2.0f, pos.y - size / 2.0f, size, size },
-                    { 0.0f, 0.0f }, 0.0f, WHITE);
+                const int row = acting ? 1 : 0;
+                int frame = acting
+                    ? anim.attackFrame
+                    : static_cast<int>(GetTime() * 6.0f + index * 0.7f) %
+                        anim.frameCount;
+
+                if (frame >= anim.frameCount) frame = 0;
+
+                float scale = size / (float)anim.frameWidth;
+
+                if ((float)anim.frameHeight * scale > size)
+                    scale = size / (float)anim.frameHeight;
+
+                const float drawWidth = anim.frameWidth * scale;
+                const float drawHeight = anim.frameHeight * scale;
+                const Rectangle source = {
+                    (float)(frame * anim.frameWidth),
+                    (float)(row * anim.frameHeight),
+                    (float)anim.frameWidth,
+                    (float)anim.frameHeight
+                };
+                const Rectangle dest = {
+                    pos.x - drawWidth / 2.0f,
+                    pos.y - drawHeight / 2.0f,
+                    drawWidth,
+                    drawHeight
+                };
+
+                DrawTexturePro(anim.texture, source, dest, { 0.0f, 0.0f }, 0.0f, WHITE);
 
                 if (effectTint.a > 0)
                 {
-                    DrawTexturePro(Slime, { 0.0f, 0.0f, 32.0f, 32.0f },
-                        { pos.x - size / 2.0f, pos.y - size / 2.0f, size, size },
-                        { 0.0f, 0.0f }, 0.0f, effectTint);
+                    DrawTexturePro(anim.texture, source, dest, { 0.0f, 0.0f }, 0.0f,
+                        effectTint);
                 }
             }
             else

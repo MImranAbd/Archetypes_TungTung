@@ -109,10 +109,37 @@ void UI::DrawOverworld(const Ball& ball, const Enemy& enemy, const Party& party,
         {
             const float ex = enemy.GetPixelX();
             const float ey = enemy.GetPixelY();
+            const EnemyAnimData& anim =
+                EnemyAnims[static_cast<int>(enemy.GetKind())];
 
-            DrawTexturePro(Slime, { 0.0f, 0.0f, 32.0f, 32.0f },
-                { ex - 21.0f, ey - 21.0f, 42.0f, 42.0f },
-                { 0.0f, 0.0f }, 0.0f, WHITE);
+            if (anim.texture.id > 0 && anim.frameWidth > 0 && anim.frameHeight > 0)
+            {
+                const int frame = static_cast<int>(GetTime() * 6.0f) % anim.frameCount;
+                const float maxSize = 46.0f;
+                float scale = maxSize / (float)anim.frameWidth;
+
+                if ((float)anim.frameHeight * scale > maxSize)
+                    scale = maxSize / (float)anim.frameHeight;
+
+                const float drawWidth = anim.frameWidth * scale;
+                const float drawHeight = anim.frameHeight * scale;
+                const Rectangle source = {
+                    (float)(frame * anim.frameWidth),
+                    0.0f,
+                    (float)anim.frameWidth,
+                    (float)anim.frameHeight
+                };
+
+                DrawTexturePro(anim.texture, source,
+                    { ex - drawWidth / 2.0f, ey - drawHeight / 2.0f,
+                      drawWidth, drawHeight },
+                    { 0.0f, 0.0f }, 0.0f, WHITE);
+            }
+            else
+            {
+                DrawCircle(static_cast<int>(ex), static_cast<int>(ey), 15.0f,
+                    Theme::Burgundy);
+            }
         }
     }
     else

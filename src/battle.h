@@ -76,6 +76,8 @@ public:
     int GetSlashActor() const;
     int GetPlayerPoints() const;
     int GetEnemyPoints() const;
+    int GetPlayerHalfIcons() const;
+    int GetEnemyHalfIcons() const;
     int GetTurnNumber() const;
     bool IsEnemySmirk() const;
     bool IsEnemyAnxious() const;
@@ -135,6 +137,12 @@ private:
     void ResetMenu();
     void AddDamagePopup(int target, bool onParty, int amount, bool crit, bool weak);
     void AddActionText(const std::string& text, int target, bool onParty, Color color);
+    void SpendPlayerHalfPoint(bool grantsHalf);
+    void SpendPlayerFullPoints();
+    void SpendPlayerMissPoints();
+    void SpendEnemyHalfPoint(bool grantsHalf);
+    void SpendEnemyFullPoints();
+    void SpendEnemyMissPoints();
     void SetBuffEffect(SkillKind kind, bool onParty, int target);
     int FindNextAliveEnemy(int start) const;
     int FindLowestHpAlly() const;
@@ -162,6 +170,8 @@ private:
 
     int playerPoints;
     int enemyPoints;
+    int playerHalfIcons;
+    int enemyHalfIcons;
     int selectedTarget;
     int selectedAlly;
     int slashActor;

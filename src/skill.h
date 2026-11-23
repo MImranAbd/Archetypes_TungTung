@@ -163,6 +163,30 @@ public:
     SukundaSkill();
 };
 
+class SkewerSkill : public Skill
+{
+public:
+    SkewerSkill();
+};
+
+class RampageSkill : public Skill
+{
+public:
+    RampageSkill();
+};
+
+class DiaramaSkill : public Skill
+{
+public:
+    DiaramaSkill();
+};
+
+class MaragionSkill : public Skill
+{
+public:
+    MaragionSkill();
+};
+
 class HeatWaveSkill : public Skill
 {
 public:
