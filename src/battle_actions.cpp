@@ -7,6 +7,40 @@
 
 using namespace BattleConfig;
 using namespace BattleInternal;
+
+namespace
+{
+    Color SupportEffectColor(SkillKind kind)
+    {
+        switch (kind)
+        {
+            case SkillKind::Heal:
+            case SkillKind::HealAll:
+                return { 120, 210, 140, 255 };
+            case SkillKind::BuffAttack:
+            case SkillKind::BuffAttackAll:
+                return { 225, 130, 95, 255 };
+            case SkillKind::BuffDefense:
+            case SkillKind::BuffDefenseAll:
+                return { 120, 185, 135, 255 };
+            case SkillKind::BuffEvasion:
+            case SkillKind::BuffEvasionAll:
+                return { 165, 135, 225, 255 };
+            case SkillKind::DebuffAttack:
+            case SkillKind::DebuffAttackAll:
+                return { 215, 95, 85, 255 };
+            case SkillKind::DebuffDefense:
+            case SkillKind::DebuffDefenseAll:
+                return { 215, 165, 85, 255 };
+            case SkillKind::DebuffAccuracy:
+            case SkillKind::DebuffAccuracyAll:
+                return { 170, 120, 210, 255 };
+            default:
+                return { 220, 205, 175, 255 };
+        }
+    }
+}
+
 void Battle::Defend()
 {
     if (phase != Phase::PlayerTurn) return;
@@ -18,12 +52,18 @@ void Battle::Defend()
     defending = true;
     actionBanner = "Defense";
     actionBannerTimer = Battle::actionDuration;
+    actionCinematic = true;
+    actionWideParty = false;
+    actionAttackPose = false;
+    supportFlashTimer = Battle::supportFlashDuration;
+    supportFlashColor = SupportEffectColor(SkillKind::BuffDefense);
     lastActorParty = party.GetActiveIndex();
     lastActorEnemy = -1;
     lastActionHasTarget = false;
     lastActionTargetOnParty = false;
     lastActionTargetIndex = -1;
     SetBuffEffect(SkillKind::BuffDefense, true, -1);
+    AddActionText("GUARD", party.GetActiveIndex(), true, supportFlashColor);
 
     message = std::string(party.Active().name) + " braces the party. GUARD!";
 
@@ -52,6 +92,13 @@ void Battle::AddDamagePopup(int target, bool onParty, int amount, bool crit, boo
 {
     damagePopups.push_back(DamagePopup{
         target, onParty, amount, crit, weak, damagePopupDuration
+    });
+}
+
+void Battle::AddActionText(const std::string& text, int target, bool onParty, Color color)
+{
+    actionTexts.push_back(ActionText{
+        text, target, onParty, color, supportTextDuration
     });
 }
 
@@ -102,8 +149,15 @@ void Battle::UseSkill(int skillIndex)
         return;
     }
 
+    const Color supportColor = SupportEffectColor(skill.GetKind());
+
     actionBanner = skill.GetName();
     actionBannerTimer = Battle::actionDuration;
+    actionCinematic = true;
+    actionWideParty = skill.IsHealAll() || skill.IsPartyBuffAll();
+    actionAttackPose = skill.IsEnemyDebuff();
+    supportFlashTimer = Battle::supportFlashDuration;
+    supportFlashColor = supportColor;
 
     actor.smirk = false;
     actor.anxious = false;
@@ -157,6 +211,8 @@ void Battle::UseSkill(int skillIndex)
                 lastActionHasTarget = true;
                 lastActionTargetOnParty = true;
                 lastActionTargetIndex = allyTarget;
+                AddActionText("+" + std::to_string(healed), allyTarget, true,
+                    supportColor);
                 message = who + " casts " + skill.GetName() + ". " + target.name
                     + " recovers " + std::to_string(healed) + " HP.";
             }
@@ -171,8 +227,10 @@ void Battle::UseSkill(int skillIndex)
         {
             int healedTotal = 0;
 
-            for (Character& member : party.Members())
+            for (int i = 0; i < static_cast<int>(party.Members().size()); i++)
             {
+                Character& member = party.Members()[i];
+
                 if (member.hp <= 0 || member.hp >= member.maxHp) continue;
 
                 const int healed = (skill.GetPower() < member.maxHp - member.hp)
@@ -180,6 +238,7 @@ void Battle::UseSkill(int skillIndex)
 
                 member.hp += healed;
                 healedTotal += healed;
+                AddActionText("+" + std::to_string(healed), i, true, supportColor);
             }
 
             message = who + " casts " + skill.GetName() + ". The party recovers "
@@ -198,6 +257,7 @@ void Battle::UseSkill(int skillIndex)
 
                 ApplyBuff(partyBuffs[i].attackUp);
                 stacks = partyBuffs[i].attackUp.stacks;
+                AddActionText("ATK UP", i, true, supportColor);
             }
 
             if (skill.IsPartyBuffAll())
@@ -220,6 +280,7 @@ void Battle::UseSkill(int skillIndex)
 
                 ApplyBuff(partyBuffs[i].defenseUp);
                 stacks = partyBuffs[i].defenseUp.stacks;
+                AddActionText("DEF UP", i, true, supportColor);
             }
 
             if (skill.IsPartyBuffAll())
@@ -242,6 +303,7 @@ void Battle::UseSkill(int skillIndex)
 
                 ApplyBuff(partyBuffs[i].evasionUp);
                 stacks = partyBuffs[i].evasionUp.stacks;
+                AddActionText("EVA UP", i, true, supportColor);
             }
 
             if (skill.IsPartyBuffAll())
@@ -264,6 +326,7 @@ void Battle::UseSkill(int skillIndex)
 
                 ApplyBuff(enemyBuffs[i].enemyAttackDown);
                 stacks = enemyBuffs[i].enemyAttackDown.stacks;
+                AddActionText("ATK DOWN", i, false, supportColor);
             }
 
             if (skill.IsEnemyDebuffAll())
@@ -286,6 +349,7 @@ void Battle::UseSkill(int skillIndex)
 
                 ApplyBuff(enemyBuffs[i].enemyDefenseDown);
                 stacks = enemyBuffs[i].enemyDefenseDown.stacks;
+                AddActionText("DEF DOWN", i, false, supportColor);
             }
 
             if (skill.IsEnemyDebuffAll())
@@ -308,6 +372,7 @@ void Battle::UseSkill(int skillIndex)
 
                 ApplyBuff(enemyBuffs[i].enemyAccuracyDown);
                 stacks = enemyBuffs[i].enemyAccuracyDown.stacks;
+                AddActionText("ACC DOWN", i, false, supportColor);
             }
 
             if (skill.IsEnemyDebuffAll())
@@ -350,6 +415,14 @@ void Battle::UseSkill(int skillIndex)
             lastActionTargetIndex = enemyTarget;
             SetBuffEffect(skill.GetKind(), false, enemyTarget);
         }
+    }
+    else if (skill.GetKind() == SkillKind::Heal)
+    {
+        SetBuffEffect(SkillKind::Heal, true, allyTarget);
+    }
+    else if (skill.GetKind() == SkillKind::HealAll)
+    {
+        SetBuffEffect(SkillKind::HealAll, true, -1);
     }
 
     std::cout << "[PARTY] " << actor.name << " uses " << skill.GetName() << " | "
@@ -415,8 +488,17 @@ bool Battle::UseItem(ItemType type, int targetIndex)
     playerPoints -= 2;
     if (playerPoints < 0) playerPoints = 0;
 
+    const Color supportColor = SupportEffectColor(SkillKind::Heal);
+
     actionBanner = ItemName(type);
     actionBannerTimer = Battle::actionDuration;
+    actionCinematic = true;
+    actionWideParty = false;
+    actionAttackPose = false;
+    supportFlashTimer = Battle::supportFlashDuration;
+    supportFlashColor = supportColor;
+    AddActionText("+" + std::to_string(healed), targetIndex, true, supportColor);
+    SetBuffEffect(SkillKind::Heal, true, targetIndex);
 
     LogState();
     RotateCharacter();
@@ -448,6 +530,11 @@ void Battle::PlayerAttack(const Skill& skill)
     Enemy& target = enemies[selectedTarget];
     const int actorIndex = party.GetActiveIndex();
 
+    actionCinematic = true;
+    actionWideParty = false;
+    actionAttackPose = true;
+    supportFlashTimer = 0.0f;
+    actionTexts.clear();
     slashActor = actorIndex;
     lastActorParty = actorIndex;
     lastActorEnemy = -1;
@@ -568,6 +655,11 @@ void Battle::PlayerAttackAll(const Skill& skill)
     Character& actor = party.Active();
     const int actorIndex = party.GetActiveIndex();
 
+    actionCinematic = true;
+    actionWideParty = false;
+    actionAttackPose = true;
+    supportFlashTimer = 0.0f;
+    actionTexts.clear();
     slashActor = actorIndex;
     lastActorParty = actorIndex;
     lastActorEnemy = -1;

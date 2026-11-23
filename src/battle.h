@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <raylib.h>
 #include "enemies.h"
 #include "party.h"
 #include "inventory.h"
@@ -32,6 +33,15 @@ struct DamagePopup
     float timer;
 };
 
+struct ActionText
+{
+    std::string text;
+    int target;
+    bool onParty;
+    Color color;
+    float timer;
+};
+
 class Battle
 {
 public:
@@ -44,6 +54,8 @@ public:
     static constexpr float actionDuration = 1.4f;
     static constexpr float hitFlashDuration = 0.6f;
     static constexpr float damagePopupDuration = 1.2f;
+    static constexpr float supportFlashDuration = 0.5f;
+    static constexpr float supportTextDuration = 1.2f;
 
     explicit Battle(Party& party, Inventory& inventory, int floorNumber,
         bool enemyAmbush = false);
@@ -82,6 +94,12 @@ public:
     SkillKind GetBuffFxKind() const;
     const std::string& GetActionBanner() const;
     float GetActionBannerTimer() const;
+    bool IsActionCinematic() const;
+    bool IsActionWideParty() const;
+    bool IsActionAttackPose() const;
+    float GetSupportFlashTimer() const;
+    Color GetSupportFlashColor() const;
+    const std::vector<ActionText>& GetActionTexts() const;
     int GetLastActorParty() const;
     int GetLastActorEnemy() const;
     bool HasLastActionTarget() const;
@@ -116,6 +134,7 @@ private:
     void SelectAlly(int direction);
     void ResetMenu();
     void AddDamagePopup(int target, bool onParty, int amount, bool crit, bool weak);
+    void AddActionText(const std::string& text, int target, bool onParty, Color color);
     void SetBuffEffect(SkillKind kind, bool onParty, int target);
     int FindNextAliveEnemy(int start) const;
     int FindLowestHpAlly() const;
@@ -169,6 +188,12 @@ private:
     SkillKind buffFxKind;
     std::string actionBanner;
     float actionBannerTimer;
+    bool actionCinematic;
+    bool actionWideParty;
+    bool actionAttackPose;
+    float supportFlashTimer;
+    Color supportFlashColor;
+    std::vector<ActionText> actionTexts;
     int lastActorParty;
     int lastActorEnemy;
     bool lastActionHasTarget;

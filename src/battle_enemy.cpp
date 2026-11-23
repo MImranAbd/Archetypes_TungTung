@@ -94,6 +94,11 @@ void Battle::ResolveEnemyAttack()
     const Element element = static_cast<Element>(GetRandomValue(0, 2));
     const EnemyMove move = ChooseEnemyMove();
 
+    actionCinematic = true;
+    actionWideParty = false;
+    actionAttackPose = true;
+    supportFlashTimer = 0.0f;
+    actionTexts.clear();
     actionBanner = std::string("Enemy ") + EnemyMoveName(move);
     actionBannerTimer = Battle::actionDuration;
 

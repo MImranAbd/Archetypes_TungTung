@@ -49,6 +49,12 @@ Battle::Battle(Party& party, Inventory& inventory, int floorNumber,
     , buffFxTarget(-1)
     , buffFxKind(SkillKind::Attack)
     , actionBannerTimer(0.0f)
+    , actionCinematic(true)
+    , actionWideParty(false)
+    , actionAttackPose(false)
+    , supportFlashTimer(0.0f)
+    , supportFlashColor(WHITE)
+    , actionTexts()
     , lastActorParty(-1)
     , lastActorEnemy(-1)
     , lastActionHasTarget(false)
@@ -137,6 +143,17 @@ void Battle::Update()
 
     if (actionBannerTimer > 0.0f)
         actionBannerTimer -= delta;
+
+    if (supportFlashTimer > 0.0f)
+        supportFlashTimer -= delta;
+
+    for (int i = static_cast<int>(actionTexts.size()) - 1; i >= 0; i--)
+    {
+        actionTexts[i].timer -= delta;
+
+        if (actionTexts[i].timer <= 0.0f)
+            actionTexts.erase(actionTexts.begin() + i);
+    }
 
     for (int i = static_cast<int>(damagePopups.size()) - 1; i >= 0; i--)
     {
@@ -760,6 +777,36 @@ const std::string& Battle::GetActionBanner() const
 float Battle::GetActionBannerTimer() const
 {
     return actionBannerTimer;
+}
+
+bool Battle::IsActionCinematic() const
+{
+    return actionCinematic;
+}
+
+bool Battle::IsActionWideParty() const
+{
+    return actionWideParty;
+}
+
+bool Battle::IsActionAttackPose() const
+{
+    return actionAttackPose;
+}
+
+float Battle::GetSupportFlashTimer() const
+{
+    return supportFlashTimer;
+}
+
+Color Battle::GetSupportFlashColor() const
+{
+    return supportFlashColor;
+}
+
+const std::vector<ActionText>& Battle::GetActionTexts() const
+{
+    return actionTexts;
 }
 
 int Battle::GetLastActorParty() const

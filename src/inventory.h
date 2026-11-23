@@ -9,6 +9,14 @@ enum class ItemType
     Potion
 };
 
+enum class ItemCategory
+{
+    Healing,
+    Weapon,
+    Attack,
+    Other
+};
+
 struct ItemStack
 {
     ItemType type;
@@ -23,6 +31,9 @@ struct EquipmentStack
 
 const char* ItemName(ItemType type);
 int ItemHeal(ItemType type);
+const char* ItemCategoryName(ItemCategory category);
+ItemCategory ItemCategoryOf(ItemType type);
+bool ItemTargetsAll(ItemType type);
 
 class Inventory
 {
@@ -41,3 +52,6 @@ private:
     std::vector<ItemStack> stacks;
     std::vector<EquipmentStack> equipment;
 };
+
+std::vector<const ItemStack*> ItemStacksInCategory(const Inventory& inventory,
+    ItemCategory category);

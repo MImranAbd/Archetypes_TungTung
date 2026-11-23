@@ -85,9 +85,11 @@ void UI::DrawBattle(Battle& battle)
     camera.zoom = 1.0f;
 
     const float bannerTimer = battle.GetActionBannerTimer();
+    const bool cinematic = battle.IsActionCinematic();
 
     float actionAmount = 0.0f;
     bool actionActive = (bannerTimer > 0.0f);
+    const bool widePartyAction = actionActive && battle.IsActionWideParty();
     Vector2 actionActorPos = { 0.0f, 0.0f };
     Vector2 actionTargetPos = { 0.0f, 0.0f };
     bool actionActorOnParty = false;
@@ -194,25 +196,56 @@ void UI::DrawBattle(Battle& battle)
         float focusX = width / 2.0f;
         float focusY = height * 0.55f;
 
-        if (hasActionActor && hasActionTarget)
+        if (!widePartyAction)
         {
-            focusX = (actionActorPos.x + actionTargetPos.x) / 2.0f;
-            focusY = (actionActorPos.y + actionTargetPos.y) / 2.0f;
-        }
-        else if (hasActionActor)
-        {
-            focusX = actionActorPos.x;
-            focusY = actionActorPos.y;
-        }
-        else if (hasActionTarget)
-        {
-            focusX = actionTargetPos.x;
-            focusY = actionTargetPos.y;
+            if (hasActionActor && hasActionTarget)
+            {
+                focusX = (actionActorPos.x + actionTargetPos.x) / 2.0f;
+                focusY = (actionActorPos.y + actionTargetPos.y) / 2.0f;
+            }
+            else if (hasActionActor)
+            {
+                focusX = actionActorPos.x;
+                focusY = actionActorPos.y;
+            }
+            else if (hasActionTarget)
+            {
+                focusX = actionTargetPos.x;
+                focusY = actionTargetPos.y;
+            }
         }
 
         camera.zoom = 1.0f + 0.95f * actionAmount;
         camera.offset = { focusX - focusX * camera.zoom, focusY - focusY * camera.zoom };
     }
+
+    Vector2 partyPositions[4];
+
+    for (int i = 0; i < 4; i++)
+    {
+        Vector2 pos = PartyPos[i];
+
+        if (widePartyAction)
+        {
+            const float groupX[4] = { 0.32f, 0.44f, 0.56f, 0.68f };
+            const Vector2 dest = { width * groupX[i], height * 0.55f };
+
+            pos = {
+                PartyPos[i].x + (dest.x - PartyPos[i].x) * actionAmount,
+                PartyPos[i].y + (dest.y - PartyPos[i].y) * actionAmount
+            };
+        }
+        else if (actionActive)
+        {
+            if (hasActionActor && actionActorOnParty && i == actionActorIndex)
+                pos = actionActorPos;
+            else if (hasActionTarget && actionTargetOnParty && i == actionTargetIndex)
+                pos = actionTargetPos;
+        }
+
+        partyPositions[i] = pos;
+    }
+
     if (actionActive)
     {
         DrawRectangle(0, 120, width, height - 410,
@@ -232,21 +265,23 @@ void UI::DrawBattle(Battle& battle)
     }
 
     const float buffAlpha = battle.GetBuffFxTimer() / 0.6f;
+    Color buffColor = Theme::Red;
 
     if (buffAlpha > 0.0f)
     {
-        Color effectColor = Theme::Red;
-
         const SkillKind fxKind = battle.GetBuffFxKind();
 
-        if (fxKind == SkillKind::BuffDefense ||
+        if (fxKind == SkillKind::Heal ||
+            fxKind == SkillKind::HealAll)
+            buffColor = { 120, 210, 140, 255 };
+        else if (fxKind == SkillKind::BuffDefense ||
             fxKind == SkillKind::BuffDefenseAll)
-            effectColor = Theme::Green;
+            buffColor = Theme::Green;
         else if (fxKind == SkillKind::BuffEvasion ||
             fxKind == SkillKind::BuffEvasionAll ||
             fxKind == SkillKind::DebuffAccuracy ||
             fxKind == SkillKind::DebuffAccuracyAll)
-            effectColor = Theme::Purple;
+            buffColor = Theme::Purple;
 
         const int fxTarget = battle.GetBuffFxTarget();
 
@@ -256,16 +291,14 @@ void UI::DrawBattle(Battle& battle)
             {
                 if (party.Members()[fxTarget].hp > 0)
                 {
-                    Vector2 fxPos = PartyPos[fxTarget];
-                    if (actionActive && actionTargetOnParty && fxTarget == actionTargetIndex)
-                        fxPos = actionTargetPos;
+                    Vector2 fxPos = partyPositions[fxTarget];
 
                     DrawEllipse(static_cast<int>(fxPos.x),
                         static_cast<int>(fxPos.y) + 58, 50.0f, 14.0f,
-                        Fade(effectColor, 0.18f * buffAlpha));
+                        Fade(buffColor, 0.18f * buffAlpha));
                     DrawEllipseLines(static_cast<int>(fxPos.x),
                         static_cast<int>(fxPos.y) + 58, 50.0f, 14.0f,
-                        Fade(effectColor, buffAlpha));
+                        Fade(buffColor, buffAlpha));
                 }
             }
             else
@@ -274,12 +307,12 @@ void UI::DrawBattle(Battle& battle)
                 {
                     if (party.Members()[i].hp <= 0) continue;
 
-                    DrawEllipse(static_cast<int>(PartyPos[i].x),
-                        static_cast<int>(PartyPos[i].y) + 58, 50.0f, 14.0f,
-                        Fade(effectColor, 0.18f * buffAlpha));
-                    DrawEllipseLines(static_cast<int>(PartyPos[i].x),
-                        static_cast<int>(PartyPos[i].y) + 58, 50.0f, 14.0f,
-                        Fade(effectColor, buffAlpha));
+                    DrawEllipse(static_cast<int>(partyPositions[i].x),
+                        static_cast<int>(partyPositions[i].y) + 58, 50.0f, 14.0f,
+                        Fade(buffColor, 0.18f * buffAlpha));
+                    DrawEllipseLines(static_cast<int>(partyPositions[i].x),
+                        static_cast<int>(partyPositions[i].y) + 58, 50.0f, 14.0f,
+                        Fade(buffColor, buffAlpha));
                 }
             }
         }
@@ -293,9 +326,9 @@ void UI::DrawBattle(Battle& battle)
 
                 const float y = fxPos.y + EnemySizes[fxTarget] / 2.0f + 8.0f;
                 DrawEllipse(static_cast<int>(fxPos.x),
-                    static_cast<int>(y), 48.0f, 12.0f, Fade(effectColor, 0.18f * buffAlpha));
+                    static_cast<int>(y), 48.0f, 12.0f, Fade(buffColor, 0.18f * buffAlpha));
                 DrawEllipseLines(static_cast<int>(fxPos.x),
-                    static_cast<int>(y), 48.0f, 12.0f, Fade(effectColor, buffAlpha));
+                    static_cast<int>(y), 48.0f, 12.0f, Fade(buffColor, buffAlpha));
             }
         }
         else
@@ -306,46 +339,75 @@ void UI::DrawBattle(Battle& battle)
 
                 const float y = EnemyPos[i].y + EnemySizes[i] / 2.0f + 8.0f;
                 DrawEllipse(static_cast<int>(EnemyPos[i].x),
-                    static_cast<int>(y), 48.0f, 12.0f, Fade(effectColor, 0.18f * buffAlpha));
+                    static_cast<int>(y), 48.0f, 12.0f, Fade(buffColor, 0.18f * buffAlpha));
                 DrawEllipseLines(static_cast<int>(EnemyPos[i].x),
-                    static_cast<int>(y), 48.0f, 12.0f, Fade(effectColor, buffAlpha));
+                    static_cast<int>(y), 48.0f, 12.0f, Fade(buffColor, buffAlpha));
             }
         }
     }
 
-    const int attackingIndex = (battle.GetSlashTimer() > 0.0f)
+    int attackingIndex = (battle.GetSlashTimer() > 0.0f)
         ? battle.GetSlashActor() : -1;
+
+    if (attackingIndex < 0 && battle.IsActionAttackPose() &&
+        battle.GetActionBannerTimer() > 0.0f)
+        attackingIndex = battle.GetLastActorParty();
+
+    const bool allyPairAction = actionActive &&
+        battle.GetLastActorParty() >= 0 &&
+        battle.HasLastActionTarget() &&
+        battle.IsLastActionTargetOnParty();
 
     for (int i = 0; i < static_cast<int>(party.Members().size()); i++)
     {
-        Vector2 pos = PartyPos[i];
+        if (allyPairAction && i != actionActorIndex && i != actionTargetIndex)
+            continue;
 
-        if (actionActive)
+        Vector2 pos = partyPositions[i];
+
+        const int pointerIndex = (bannerTimer > 0.0f) ? -1 : activeIndex;
+
+        Color actorTint = BLANK;
+
+        if (buffAlpha > 0.0f && battle.IsBuffFxOnParty())
         {
-            if (hasActionActor && actionActorOnParty && i == actionActorIndex)
-                pos = actionActorPos;
-            else if (hasActionTarget && actionTargetOnParty && i == actionTargetIndex)
-                pos = actionTargetPos;
+            const int fxTarget = battle.GetBuffFxTarget();
+
+            if (fxTarget < 0 || fxTarget == i)
+                actorTint = Fade(buffColor, 0.45f * buffAlpha);
         }
 
-        const int pointerIndex = actionActive ? -1 : activeIndex;
-        DrawPartyActor(i, pos, pointerIndex, attackingIndex, party);
+        DrawPartyActor(i, pos, pointerIndex, attackingIndex, party, actorTint);
     }
 
-    for (int i = 0; i < static_cast<int>(enemies.size()); i++)
+    if (!allyPairAction && !widePartyAction)
     {
-        Vector2 pos = EnemyPos[i];
-
-        if (actionActive)
+        for (int i = 0; i < static_cast<int>(enemies.size()); i++)
         {
-            if (hasActionActor && !actionActorOnParty && i == actionActorIndex)
-                pos = actionActorPos;
-            else if (hasActionTarget && !actionTargetOnParty && i == actionTargetIndex)
-                pos = actionTargetPos;
-        }
+            Vector2 pos = EnemyPos[i];
 
-        const bool showEnemyCursor = showTargetCursor && !targetingAlly && i == selected;
-        DrawEnemyActor(i, pos, showEnemyCursor, enemies[i]);
+            if (actionActive)
+            {
+                if (hasActionActor && !actionActorOnParty && i == actionActorIndex)
+                    pos = actionActorPos;
+                else if (hasActionTarget && !actionTargetOnParty && i == actionTargetIndex)
+                    pos = actionTargetPos;
+            }
+
+            const bool showEnemyCursor = showTargetCursor && !targetingAlly && i == selected;
+
+            Color enemyTint = BLANK;
+
+            if (buffAlpha > 0.0f && !battle.IsBuffFxOnParty())
+            {
+                const int fxTarget = battle.GetBuffFxTarget();
+
+                if (fxTarget < 0 || fxTarget == i)
+                    enemyTint = Fade(buffColor, 0.45f * buffAlpha);
+            }
+
+            DrawEnemyActor(i, pos, showEnemyCursor, enemies[i], enemyTint);
+        }
     }
 
     if (showTargetCursor && targetingAlly && selectedAlly >= 0 && selectedAlly < 4 &&
@@ -365,9 +427,7 @@ void UI::DrawBattle(Battle& battle)
         {
             if (flashTarget >= 0 && flashTarget < 4)
             {
-                Vector2 flashPos = PartyPos[flashTarget];
-                if (actionActive && actionTargetOnParty && flashTarget == actionTargetIndex)
-                    flashPos = actionTargetPos;
+                Vector2 flashPos = partyPositions[flashTarget];
 
                 DrawHitFlash(static_cast<int>(flashPos.x),
                     static_cast<int>(flashPos.y), 1.0f, flashAlpha);
@@ -384,6 +444,40 @@ void UI::DrawBattle(Battle& battle)
         }
     }
 
+    for (const ActionText& text : battle.GetActionTexts())
+    {
+        if (text.target < 0) continue;
+
+        Vector2 position = { 0.0f, 0.0f };
+
+        if (text.onParty)
+        {
+            if (text.target >= static_cast<int>(party.Members().size())) continue;
+            position = partyPositions[text.target];
+        }
+        else
+        {
+            if (text.target >= static_cast<int>(enemies.size())) continue;
+            position = EnemyPos[text.target];
+
+            if (actionActive && hasActionTarget && !actionTargetOnParty &&
+                text.target == actionTargetIndex)
+                position = actionTargetPos;
+        }
+
+        float fade = text.timer / Battle::supportTextDuration;
+        if (fade < 0.0f) fade = 0.0f;
+        if (fade > 1.0f) fade = 1.0f;
+
+        const int rise = static_cast<int>((1.0f - fade) * 36.0f);
+        const int x = static_cast<int>(position.x) + (text.onParty ? 28 : 38);
+        const int y = static_cast<int>(position.y) -
+            (text.onParty ? 118 : 100) - rise;
+
+        DrawCentered(text.text.c_str(), x, y, 24,
+            Fade(text.color, fade), true);
+    }
+
     for (const DamagePopup& popup : battle.GetDamagePopups())
     {
         if (actionActive && actionAmount < 0.5f) continue;
@@ -394,9 +488,7 @@ void UI::DrawBattle(Battle& battle)
         if (popup.onParty)
         {
             if (popup.target < 0 || popup.target >= 4) continue;
-            position = PartyPos[popup.target];
-            if (actionActive && actionTargetOnParty && popup.target == actionTargetIndex)
-                position = actionTargetPos;
+            position = partyPositions[popup.target];
             sizeScale = 1.0f;
         }
         else
@@ -432,6 +524,15 @@ void UI::DrawBattle(Battle& battle)
     }
 
     EndMode2D();
+
+    const float supportAlpha = battle.GetSupportFlashTimer() /
+        Battle::supportFlashDuration;
+
+    if (supportAlpha > 0.0f)
+    {
+        DrawRectangle(0, 0, width, height,
+            Fade(battle.GetSupportFlashColor(), 0.10f * supportAlpha));
+    }
 
     const float impactAlpha = battle.GetHitFlashTimer() / Battle::hitFlashDuration;
 
@@ -469,7 +570,7 @@ void UI::DrawBattle(Battle& battle)
     else if (battle.IsEnemyAnxious())
         UiDrawText("Enemy Anxious", 1420, 150, 20, Theme::Purple, true);
 
-    if (bannerTimer > 0.0f)
+    if (bannerTimer > 0.0f && cinematic)
     {
         const float bannerAlpha = (bannerTimer < 0.25f) ? (bannerTimer / 0.25f) : 1.0f;
         const char* banner = battle.GetActionBanner().c_str();
@@ -631,6 +732,7 @@ void UI::DrawBattle(Battle& battle)
     }
     DrawPartyCards(battle, 1050, 790, 830);
 }
+
 
 
 

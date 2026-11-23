@@ -57,9 +57,11 @@ AttackPlan MakeAttackPlan(const Ball& ball, const Enemy& enemy, const GameMap& m
 }
 
 void UI::DrawOverworld(const Ball& ball, const Enemy& enemy, const Party& party,
-    const GameMap& map, bool pendingBattle, int dungeonFloor) const
+    const GameMap& map, bool pendingBattle, int dungeonFloor,
+    bool showHud, const Camera2D& camera) const
 {
     DrawBackdrop();
+    BeginMode2D(camera);
     map.Draw();
 
     if (!pendingBattle)
@@ -69,32 +71,39 @@ void UI::DrawOverworld(const Ball& ball, const Enemy& enemy, const Party& party,
     {
         const float bx = ball.GetPixelX();
         const float by = ball.GetPixelY();
-        const int leader = 0;
         const bool moving = ball.IsMoving();
-        const Texture2D sheet = moving
-            ? PartyWalkSheets[leader]
-            : PartyIdleSheets[leader];
+        const int frame = moving
+            ? static_cast<int>(GetTime() * 8.0f) % 4
+            : 0;
 
-        int row = 0;
+        Texture2D texture = ElizaStand;
+        bool flip = false;
 
         if (ball.GetFacingY() < 0)
-            row = 4;
+        {
+            texture = ElizaWalkUp[frame];
+        }
         else if (ball.GetFacingY() == 0)
-            row = 2;
+        {
+            texture = ElizaWalkSide[frame];
+            flip = (ball.GetFacingX() < 0);
+        }
+        else if (moving)
+        {
+            texture = ElizaWalkDown[frame];
+        }
 
-        const int frame = static_cast<int>(
-            GetTime() * (moving ? 10.0f : 4.0f)) % 4;
+        Rectangle source = { 0.0f, 0.0f, 32.0f, 32.0f };
 
-        const Rectangle source = {
-            static_cast<float>(frame * 32),
-            static_cast<float>(row * 32),
-            32.0f,
-            32.0f
-        };
+        if (flip)
+        {
+            source.x = 32.0f;
+            source.width = -32.0f;
+        }
 
-        DrawTexturePro(sheet, source,
+        DrawTexturePro(texture, source,
             { bx - 25.0f, by - 25.0f, 50.0f, 50.0f },
-            { 0.0f, 0.0f }, 0.0f, PartyTints[leader]);
+            { 0.0f, 0.0f }, 0.0f, WHITE);
 
         if (enemy.IsActive())
         {
@@ -113,6 +122,10 @@ void UI::DrawOverworld(const Ball& ball, const Enemy& enemy, const Party& party,
     }
 
     DrawSlash();
+    EndMode2D();
+
+    if (!showHud)
+        return;
 
     const int width = GetScreenWidth();
     const int height = GetScreenHeight();
@@ -145,7 +158,7 @@ void UI::DrawOverworld(const Ball& ball, const Enemy& enemy, const Party& party,
         UiDrawText("CLEARED", width - 244, 30, 20, Theme::Muted);
     }
 
-    UiDrawText("WASD  MOVE     SHIFT  RUN     SPACE  SLASH     P  PAUSE     I  ITEMS",
+    UiDrawText("WASD  MOVE     SHIFT  RUN     SPACE  SLASH     P / TAB  MENU     I  ITEMS",
         24, height - 42, 18, Theme::Muted);
 
     const int reach = ball.IsRunning() ? 3 : (ball.IsMoving() ? 2 : 1);

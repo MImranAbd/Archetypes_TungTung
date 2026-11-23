@@ -176,6 +176,19 @@ void Party::RestoreAll()
     activeIndex = 0;
 }
 
+void Party::ReviveFallenOneHp()
+{
+    for (Character& member : members)
+    {
+        if (member.hp <= 0)
+        {
+            member.hp = 1;
+            member.smirk = false;
+            member.anxious = false;
+        }
+    }
+}
+
 int Party::XpForNextLevel(int level)
 {
     return 20 + (level - 1) * 15;
@@ -223,6 +236,62 @@ void Party::GainXp(int amount)
                       << member.level << "\n";
         }
     }
+}
+
+std::vector<EquipmentId> EquipmentOptions(const Character& member,
+    EquipSlot slot, const Inventory& inventory)
+{
+    std::vector<EquipmentId> options;
+    options.push_back(EquipmentId::None);
+
+    EquipmentId current = EquipmentId::None;
+    if (slot == EquipSlot::Weapon) current = member.weapon;
+    else if (slot == EquipSlot::Armor) current = member.armor;
+    else current = member.accessory;
+
+    const EquipmentId* allIds = AllEquipmentIds();
+    const int allCount = AllEquipmentCount();
+
+    for (int i = 0; i < allCount; i++)
+    {
+        const EquipmentId id = allIds[i];
+
+        if (GetEquipment(id).slot != slot) continue;
+        if (id == current || inventory.CountEquipment(id) > 0)
+            options.push_back(id);
+    }
+
+    return options;
+}
+
+bool Party::EquipItem(int memberIndex, EquipSlot slot, EquipmentId id,
+    Inventory& inventory)
+{
+    if (memberIndex < 0 || memberIndex >= static_cast<int>(members.size()))
+        return false;
+
+    Character& member = members[memberIndex];
+
+    EquipmentId current = EquipmentId::None;
+    if (slot == EquipSlot::Weapon) current = member.weapon;
+    else if (slot == EquipSlot::Armor) current = member.armor;
+    else current = member.accessory;
+
+    if (id == current)
+        return false;
+
+    if (id != EquipmentId::None && !inventory.ConsumeEquipment(id))
+        return false;
+
+    if (current != EquipmentId::None)
+        inventory.AddEquipment(current, 1);
+
+    if (slot == EquipSlot::Weapon) member.weapon = id;
+    else if (slot == EquipSlot::Armor) member.armor = id;
+    else member.accessory = id;
+
+    RecalculateStats(member);
+    return true;
 }
 
 bool Party::CycleEquipment(int memberIndex, EquipSlot slot, Inventory& inventory)

@@ -199,16 +199,16 @@ namespace BattleUi
                 2.0f, Fade(WHITE, alpha));
         }
     }
-
-    void DrawPartyActor(int index, Vector2 pos, int activeIndex, int attackingIndex, const Party& party)
+    void DrawPartyActor(int index, Vector2 pos, int activeIndex, int attackingIndex,
+        const Party& party, Color effectTint)
     {
         const Character& member = party.Members()[index];
         const bool active = (index == activeIndex);
         const bool attacking = (index == attackingIndex);
         const float scale = 130.0f;
         const Texture2D texture = attacking
-            ? PartyAttackSheets[index]
-            : PartyIdleSheets[index];
+            ? PartyAttackPoses[index]
+            : PartyBattlePoses[index];
 
         if (member.hp <= 0)
         {
@@ -230,11 +230,21 @@ namespace BattleUi
         {
             DrawTexturePro(texture, { 0.0f, 0.0f, 32.0f, 32.0f },
                 { pos.x - scale / 2.0f, pos.y - scale / 2.0f, scale, scale },
-                { 0.0f, 0.0f }, 0.0f, PartyTints[index]);
+                { 0.0f, 0.0f }, 0.0f, WHITE);
+
+            if (effectTint.a > 0)
+            {
+                DrawTexturePro(texture, { 0.0f, 0.0f, 32.0f, 32.0f },
+                    { pos.x - scale / 2.0f, pos.y - scale / 2.0f, scale, scale },
+                    { 0.0f, 0.0f }, 0.0f, effectTint);
+            }
         }
         else
         {
             DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), 34.0f, PartyTints[index]);
+
+            if (effectTint.a > 0)
+                DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), 34.0f, effectTint);
         }
 
         if (active)
@@ -244,7 +254,8 @@ namespace BattleUi
         }
     }
 
-    void DrawEnemyActor(int index, Vector2 pos, bool selected, const Enemy& enemy)
+    void DrawEnemyActor(int index, Vector2 pos, bool selected, const Enemy& enemy,
+        Color effectTint)
     {
         const float size = EnemySizes[index];
 
@@ -255,11 +266,22 @@ namespace BattleUi
                 DrawTexturePro(Slime, { 0.0f, 0.0f, 32.0f, 32.0f },
                     { pos.x - size / 2.0f, pos.y - size / 2.0f, size, size },
                     { 0.0f, 0.0f }, 0.0f, WHITE);
+
+                if (effectTint.a > 0)
+                {
+                    DrawTexturePro(Slime, { 0.0f, 0.0f, 32.0f, 32.0f },
+                        { pos.x - size / 2.0f, pos.y - size / 2.0f, size, size },
+                        { 0.0f, 0.0f }, 0.0f, effectTint);
+                }
             }
             else
             {
                 DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), size / 2.0f,
                     Theme::Blue);
+
+                if (effectTint.a > 0)
+                    DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y),
+                        size / 2.0f, effectTint);
             }
         }
         else
@@ -321,9 +343,9 @@ namespace BattleUi
 
             if (SpritesLoaded)
             {
-                DrawTexturePro(PartyIdleSheets[i], { 0.0f, 0.0f, 32.0f, 32.0f },
+                DrawTexturePro(PartyBattlePoses[i], { 0.0f, 0.0f, 32.0f, 32.0f },
                     { static_cast<float>(cardX + 10), static_cast<float>(cardY + 12), 54.0f, 54.0f },
-                    { 0.0f, 0.0f }, 0.0f, PartyTints[i]);
+                    { 0.0f, 0.0f }, 0.0f, WHITE);
             }
             else
             {
@@ -385,9 +407,9 @@ namespace BattleUi
 
             if (SpritesLoaded)
             {
-                DrawTexturePro(PartyIdleSheets[i], { 0.0f, 0.0f, 32.0f, 32.0f },
+                DrawTexturePro(PartyBattlePoses[i], { 0.0f, 0.0f, 32.0f, 32.0f },
                     { 1180.0f, static_cast<float>(y), 46.0f, 46.0f },
-                    { 0.0f, 0.0f }, 0.0f, PartyTints[i]);
+                    { 0.0f, 0.0f }, 0.0f, WHITE);
             }
 
             UiDrawText(member.name, 1240, y + 4, 24, Theme::Ink, true);

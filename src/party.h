@@ -29,6 +29,9 @@ struct Character
     SkillList skills;
 };
 
+std::vector<EquipmentId> EquipmentOptions(const Character& member,
+    EquipSlot slot, const Inventory& inventory);
+
 class Party
 {
 public:
@@ -49,10 +52,13 @@ public:
     int GetMoney() const;
     void AddMoney(int amount);
     void RestoreAll();
+    void ReviveFallenOneHp();
 
     void GainXp(int amount);
     void RecalculateStats(Character& member);
     bool CycleEquipment(int memberIndex, EquipSlot slot, Inventory& inventory);
+    bool EquipItem(int memberIndex, EquipSlot slot, EquipmentId id,
+        Inventory& inventory);
 
     static int XpForNextLevel(int level);
 

@@ -22,6 +22,51 @@ int ItemHeal(ItemType type)
     return 0;
 }
 
+const char* ItemCategoryName(ItemCategory category)
+{
+    switch (category)
+    {
+        case ItemCategory::Healing: return "HEALING";
+        case ItemCategory::Weapon:  return "WEAPON";
+        case ItemCategory::Attack:  return "ATTACK";
+        case ItemCategory::Other:   return "OTHER";
+    }
+
+    return "OTHER";
+}
+
+ItemCategory ItemCategoryOf(ItemType type)
+{
+    switch (type)
+    {
+        case ItemType::Herb:
+        case ItemType::Potion:
+            return ItemCategory::Healing;
+    }
+
+    return ItemCategory::Other;
+}
+
+bool ItemTargetsAll(ItemType type)
+{
+    (void)type;
+    return false;
+}
+
+std::vector<const ItemStack*> ItemStacksInCategory(const Inventory& inventory,
+    ItemCategory category)
+{
+    std::vector<const ItemStack*> result;
+
+    for (const ItemStack& stack : inventory.Stacks())
+    {
+        if (ItemCategoryOf(stack.type) == category)
+            result.push_back(&stack);
+    }
+
+    return result;
+}
+
 void Inventory::Add(ItemType type, int amount)
 {
     for (ItemStack& stack : stacks)
