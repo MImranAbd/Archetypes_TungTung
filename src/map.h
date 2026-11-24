@@ -10,7 +10,8 @@ public:
     static constexpr int Rows = 27;
     static constexpr int TileSize = 40;
 
-    void Generate(int& spawnX, int& spawnY);
+    void Generate(int& spawnX, int& spawnY, bool bossFloor = false);
+    bool IsBossLayout() const;
 
     int GetExitX() const;
     int GetExitY() const;
@@ -42,6 +43,7 @@ private:
 
     void CarveRoom(const Room& room);
     void CarveCorridor(int fromX, int fromY, int toX, int toY);
+    void GenerateBossLayout(int& outSpawnX, int& outSpawnY);
     bool HasPickupAt(int x, int y) const;
 
     Tile tiles[Rows][Cols];
@@ -50,4 +52,5 @@ private:
     int spawnY;
     int exitX;
     int exitY;
+    bool bossLayout = false;
 };

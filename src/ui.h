@@ -55,6 +55,7 @@ public:
     void StartSlash(int cellX, int cellY);
 
     int DrawMainMenu(int selectedIndex, bool showHelp) const;
+    void DrawEnding() const;
 
     void DrawOverworld(const Ball& ball, const Enemy& enemy, const Party& party,
         const GameMap& map, bool pendingBattle, int dungeonFloor,

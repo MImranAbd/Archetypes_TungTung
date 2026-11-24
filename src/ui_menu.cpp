@@ -20,6 +20,29 @@ namespace
     }
 }
 
+void UI::DrawEnding() const
+{
+    DrawBackdrop();
+
+    const int width = GetScreenWidth();
+    const int height = GetScreenHeight();
+
+    const char* title = "THE END";
+    UiDrawText(title, width / 2 - UiMeasureText(title, 160, true) / 2,
+        height / 2 - 180, 160, Theme::Ink, true);
+
+    DrawLine(width / 2 - 300, height / 2 + 20, width / 2 + 300, height / 2 + 20,
+        Fade(Theme::Ink, 0.35f));
+
+    const char* body = "The Necromancer falls. The dungeon is silent.";
+    UiDrawText(body, width / 2 - UiMeasureText(body, 28) / 2,
+        height / 2 + 70, 28, Theme::Ink);
+
+    const char* prompt = "Press J / ENTER to return to the title.";
+    UiDrawText(prompt, width / 2 - UiMeasureText(prompt, 20) / 2,
+        height / 2 + 200, 20, Theme::Muted);
+}
+
 int UI::DrawMainMenu(int selectedIndex, bool showHelp) const
 {
     DrawBackdrop();

@@ -408,14 +408,20 @@ void UI::DrawBattle(Battle& battle)
 
             const bool enemyActing = (bannerTimer > 0.0f &&
                 battle.GetLastActorEnemy() == i);
+            const float enemyScale = battle.IsElite()
+                ? (i == 0 ? 2.75f : 0.65f)
+                : 1.0f;
 
             DrawEnemyActor(i, pos, showEnemyCursor, enemies[i], enemyTint,
-                enemyActing);
+                enemyActing, enemyScale);
         }
     }
 
+    const bool reviveTargeting = battle.IsReviveTargeting();
+
     if (showTargetCursor && targetingAlly && selectedAlly >= 0 && selectedAlly < 4 &&
-        party.Members()[selectedAlly].hp > 0)
+        (reviveTargeting ? party.Members()[selectedAlly].hp <= 0
+            : party.Members()[selectedAlly].hp > 0))
     {
         DrawTargetCaret(PartyPos[selectedAlly].x, PartyPos[selectedAlly].y - 104.0f,
             Theme::Gold);
@@ -702,9 +708,9 @@ void UI::DrawBattle(Battle& battle)
     {
         UiDrawText("ITEMS", 238, 802, 18, Theme::Gold, true);
 
-        for (int i = 0; i < 2; i++)
+        for (int i = 0; i < Battle::itemMenuCount; i++)
         {
-            const ItemType type = (i == 0) ? ItemType::Herb : ItemType::Potion;
+            const ItemType type = Battle::ItemAtMenuIndex(i);
             const int y = 840 + i * 44;
             const bool selectedItem = (battle.GetItemMenuIndex() == i);
 
@@ -745,8 +751,7 @@ void UI::DrawBattle(Battle& battle)
     }
     else if (showItemList)
     {
-        const ItemType type = (battle.GetItemMenuIndex() == 0)
-            ? ItemType::Herb : ItemType::Potion;
+        const ItemType type = Battle::ItemAtMenuIndex(battle.GetItemMenuIndex());
         detailName = ItemName(type);
         detailText = ItemDescription(type);
     }

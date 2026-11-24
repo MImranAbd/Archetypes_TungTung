@@ -64,6 +64,18 @@ void UI::DrawOverworld(const Ball& ball, const Enemy& enemy, const Party& party,
     BeginMode2D(camera);
     map.Draw();
 
+    if (dungeonFloor % 10 == 0)
+    {
+        DrawCentered("SAFE AREA", 38 * 40 + 20, 2 * 40, 18,
+            Fade(Theme::Muted, 0.85f));
+
+        if (enemy.IsActive())
+        {
+            DrawCentered("SEALED", map.GetExitX() * 40 + 20,
+                map.GetExitY() * 40 - 18, 16, Theme::Red);
+        }
+    }
+
     if (!pendingBattle)
         DrawAttackIndicator(ball, enemy, map);
 
@@ -115,7 +127,7 @@ void UI::DrawOverworld(const Ball& ball, const Enemy& enemy, const Party& party,
             if (anim.texture.id > 0 && anim.frameWidth > 0 && anim.frameHeight > 0)
             {
                 const int frame = static_cast<int>(GetTime() * 6.0f) % anim.frameCount;
-                const float maxSize = 46.0f;
+                const float maxSize = (dungeonFloor % 10 == 0) ? 100.0f : 46.0f;
                 float scale = maxSize / (float)anim.frameWidth;
 
                 if ((float)anim.frameHeight * scale > maxSize)

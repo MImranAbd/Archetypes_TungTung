@@ -27,6 +27,8 @@ namespace PauseUi
 
             const bool allTarget = selectedStack != nullptr &&
                 ItemTargetsAll(selectedStack->type);
+            const bool reviving = selectedStack != nullptr &&
+                ItemRevives(selectedStack->type);
 
             DrawPartyList(party, 40, 200, 430, -1, true,
                 menu.targetIndex, allTarget);
@@ -34,15 +36,26 @@ namespace PauseUi
             const Rectangle panel = { 520.0f, 190.0f, 1360.0f, 700.0f };
             DrawPaperPanel(panel);
 
-            UiDrawText("CHOOSE AN ALLY", (int)panel.x + 40, (int)panel.y + 34, 36,
-                Theme::Ink, true);
+            UiDrawText(reviving ? "CHOOSE A FALLEN ALLY" : "CHOOSE AN ALLY",
+                (int)panel.x + 40, (int)panel.y + 34, 36, Theme::Ink, true);
 
             if (selectedStack != nullptr)
             {
                 UiDrawText(ItemName(selectedStack->type),
                     (int)panel.x + 40, (int)panel.y + 96, 26, Theme::Ink, true);
-                UiDrawText(TextFormat("Restores %d HP", ItemHeal(selectedStack->type)),
-                    (int)panel.x + 40, (int)panel.y + 132, 19, Theme::Muted);
+
+                if (reviving)
+                {
+                    UiDrawText(TextFormat("Revives with %d HP",
+                        ItemReviveHp(selectedStack->type)),
+                        (int)panel.x + 40, (int)panel.y + 132, 19, Theme::Muted);
+                }
+                else
+                {
+                    UiDrawText(TextFormat("Restores %d HP",
+                        ItemHeal(selectedStack->type)),
+                        (int)panel.x + 40, (int)panel.y + 132, 19, Theme::Muted);
+                }
 
                 if (allTarget)
                 {
@@ -146,8 +159,18 @@ namespace PauseUi
                     Theme::Ink, true);
                 UiDrawText(TextFormat("x%d", stack.count), (int)row.x + 330, y + 8, 22,
                     Theme::Gold, true);
-                UiDrawText(TextFormat("Restores %d HP", ItemHeal(stack.type)),
-                    (int)row.x + 440, y + 10, 17, Theme::Muted);
+
+                if (ItemRevives(stack.type))
+                {
+                    UiDrawText(TextFormat("Revives with %d HP",
+                        ItemReviveHp(stack.type)),
+                        (int)row.x + 440, y + 10, 17, Theme::Muted);
+                }
+                else
+                {
+                    UiDrawText(TextFormat("Restores %d HP", ItemHeal(stack.type)),
+                        (int)row.x + 440, y + 10, 17, Theme::Muted);
+                }
 
                 y += 58;
             }

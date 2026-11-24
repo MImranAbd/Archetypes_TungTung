@@ -57,9 +57,14 @@ namespace BattleUi
 
     const char* ItemDescription(ItemType type)
     {
-        return (type == ItemType::Herb)
-            ? "Restores 5 HP to the weakest living ally."
-            : "Restores 10 HP to the weakest living ally.";
+        switch (type)
+        {
+            case ItemType::Herb: return "Restores 5 HP to one living ally.";
+            case ItemType::Potion: return "Restores 10 HP to one living ally.";
+            case ItemType::Revive: return "Revives one fallen ally with 10 HP.";
+        }
+
+        return "";
     }
 
     void DrawBar(int x, int y, int width, int height, float ratio, Color fill)
@@ -270,9 +275,11 @@ namespace BattleUi
     }
 
     void DrawEnemyActor(int index, Vector2 pos, bool selected, const Enemy& enemy,
-        Color effectTint, bool acting)
+        Color effectTint, bool acting, float sizeScale)
     {
-        const float size = EnemySizes[index];
+        const float baseSize = EnemySizes[index];
+        const float size = baseSize * sizeScale;
+        const float centerY = pos.y + baseSize * 0.5f - size * 0.5f;
         const EnemyAnimData& anim =
             EnemyAnims[static_cast<int>(enemy.GetKind())];
 
@@ -303,7 +310,7 @@ namespace BattleUi
                 };
                 const Rectangle dest = {
                     pos.x - drawWidth / 2.0f,
-                    pos.y - drawHeight / 2.0f,
+                    centerY - drawHeight / 2.0f,
                     drawWidth,
                     drawHeight
                 };
@@ -318,38 +325,38 @@ namespace BattleUi
             }
             else
             {
-                DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y), size / 2.0f,
+                DrawCircle(static_cast<int>(pos.x), static_cast<int>(centerY), size / 2.0f,
                     Theme::Blue);
 
                 if (effectTint.a > 0)
-                    DrawCircle(static_cast<int>(pos.x), static_cast<int>(pos.y),
+                    DrawCircle(static_cast<int>(pos.x), static_cast<int>(centerY),
                         size / 2.0f, effectTint);
             }
         }
         else
         {
-            DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(pos.y), size / 2.0f,
+            DrawCircleLines(static_cast<int>(pos.x), static_cast<int>(centerY), size / 2.0f,
                 Theme::Muted);
-            DrawLineEx({ pos.x - size / 3.0f, pos.y - size / 3.0f },
-                { pos.x + size / 3.0f, pos.y + size / 3.0f }, 2.0f, Theme::Muted);
-            DrawLineEx({ pos.x - size / 3.0f, pos.y + size / 3.0f },
-                { pos.x + size / 3.0f, pos.y - size / 3.0f }, 2.0f, Theme::Muted);
+            DrawLineEx({ pos.x - size / 3.0f, centerY - size / 3.0f },
+                { pos.x + size / 3.0f, centerY + size / 3.0f }, 2.0f, Theme::Muted);
+            DrawLineEx({ pos.x - size / 3.0f, centerY + size / 3.0f },
+                { pos.x + size / 3.0f, centerY - size / 3.0f }, 2.0f, Theme::Muted);
         }
 
         if (enemy.IsAlive())
         {
             const bool lowHealth = (enemy.GetHp() * 4 <= enemy.GetMaxHp());
 
-            DrawDiamond(pos.x, pos.y - size / 2.0f - 28.0f, 12.0f,
+            DrawDiamond(pos.x, centerY - size / 2.0f - 28.0f, 12.0f,
                 lowHealth ? Theme::Red : Theme::Green);
 
             if (selected)
-                DrawTargetCaret(pos.x, pos.y - size / 2.0f - 48.0f, Theme::Gold);
+                DrawTargetCaret(pos.x, centerY - size / 2.0f - 48.0f, Theme::Gold);
         }
 
         const std::string label = "E" + std::to_string(index + 1);
         DrawCentered(label.c_str(), static_cast<int>(pos.x),
-            static_cast<int>(pos.y + size / 2.0f + 8.0f), 14,
+            static_cast<int>(centerY + size / 2.0f + 8.0f), 14,
             enemy.IsAlive() ? Theme::Muted : Fade(Theme::Muted, 0.5f));
     }
 
@@ -395,6 +402,12 @@ namespace BattleUi
             }
 
             UiDrawText(member.name, cardX + 76, cardY + 10, 22, Theme::Ink, true);
+
+            const char* roleName = RoleName(member.role);
+            UiDrawText(roleName, cardX + cardWidth - 10 -
+                UiMeasureText(roleName, 12, true), cardY + 28, 12,
+                Theme::Muted, true);
+
             UiDrawText(TextFormat("LV %d", member.level), cardX + cardWidth - 64,
                 cardY + 12, 14, Theme::Muted);
 

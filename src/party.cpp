@@ -2,14 +2,135 @@
 
 #include <iostream>
 
+const char* RoleName(Role role)
+{
+    switch (role)
+    {
+        case Role::Mage: return "MAGE";
+        case Role::Thief: return "THIEF";
+        case Role::Warrior: return "WARRIOR";
+        case Role::Priest: return "PRIEST";
+    }
+
+    return "NONE";
+}
+
+const char* RoleDescription(Role role)
+{
+    switch (role)
+    {
+        case Role::Mage: return "Elemental caster. Fire, Ice, Light, and Dark.";
+        case Role::Thief: return "Single-target physical strikes and debuffs.";
+        case Role::Warrior: return "Front-line fighter. Fire and Physical.";
+        case Role::Priest: return "Support healer with Light magic.";
+    }
+
+    return "";
+}
+
+SkillList SkillsForRole(Role role)
+{
+    switch (role)
+    {
+        case Role::Mage:
+            return {
+                std::make_shared<AgiSkill>(),
+                std::make_shared<BufuSkill>(),
+                std::make_shared<HamaSkill>(),
+                std::make_shared<MudoSkill>(),
+                std::make_shared<MaragionSkill>(),
+                std::make_shared<MazioSkill>(),
+                std::make_shared<MahamaSkill>(),
+                std::make_shared<MamudoSkill>(),
+                std::make_shared<MasukukajaSkill>()
+            };
+
+        case Role::Thief:
+            return {
+                std::make_shared<StrikeSkill>(),
+                std::make_shared<SkewerSkill>(),
+                std::make_shared<MightyBlowSkill>(),
+                std::make_shared<TarundaSkill>(),
+                std::make_shared<RakundaSkill>(),
+                std::make_shared<SukundaSkill>()
+            };
+
+        case Role::Warrior:
+            return {
+                std::make_shared<CleaveSkill>(),
+                std::make_shared<HeatWaveSkill>(),
+                std::make_shared<MightyBlowSkill>(),
+                std::make_shared<AgiSkill>(),
+                std::make_shared<AgilaoSkill>(),
+                std::make_shared<MaragionSkill>(),
+                std::make_shared<TarukajaSkill>()
+            };
+
+        case Role::Priest:
+            return {
+                std::make_shared<DiaSkill>(),
+                std::make_shared<DiaramaSkill>(),
+                std::make_shared<MediaSkill>(),
+                std::make_shared<MediaramaSkill>(),
+                std::make_shared<RecarmSkill>(),
+                std::make_shared<RakukajaSkill>(),
+                std::make_shared<MarakukajaSkill>(),
+                std::make_shared<HamaSkill>(),
+                std::make_shared<MahamaSkill>()
+            };
+    }
+
+    return {};
+}
+
+int RolePassiveCount(Role role)
+{
+    (void)role;
+    return 2;
+}
+
+const Passive& RolePassive(Role role, int index)
+{
+    static const Passive magePassives[2] = {
+        { "Arcane Affinity", "+1 damage with Fire, Ice, Light, and Dark skills." },
+        { "Focused Mind", "+5% accuracy." }
+    };
+    static const Passive thiefPassives[2] = {
+        { "Keen Eye", "+10% critical chance." },
+        { "Nimble", "Enemies have -10% accuracy against you." }
+    };
+    static const Passive warriorPassives[2] = {
+        { "Weapon Mastery", "+1 damage with Physical skills." },
+        { "Iron Body", "Takes 1 less damage from enemy attacks." }
+    };
+    static const Passive priestPassives[2] = {
+        { "Blessed Hands", "Healing skills restore 2 extra HP." },
+        { "Radiance", "+1 damage with Light skills." }
+    };
+
+    if (index < 0 || index > 1)
+        index = 0;
+
+    switch (role)
+    {
+        case Role::Mage: return magePassives[index];
+        case Role::Thief: return thiefPassives[index];
+        case Role::Warrior: return warriorPassives[index];
+        case Role::Priest: return priestPassives[index];
+    }
+
+    return magePassives[0];
+}
+
 namespace
 {
     Character MakeCharacter(const char* name, Element element, Element weakness,
-        int baseHp, int baseAttack, int baseDefense, SkillList skills)
+        int baseHp, int baseAttack, int baseDefense, Role role)
     {
         Character character{};
 
         character.name = name;
+        character.role = role;
         character.element = element;
         character.weakness = weakness;
         character.level = 20;
@@ -27,7 +148,7 @@ namespace
         character.accessory = EquipmentId::None;
         character.smirk = false;
         character.anxious = false;
-        character.skills = std::move(skills);
+        character.skills = SkillsForRole(role);
 
         return character;
     }
@@ -38,49 +159,22 @@ Party::Party()
     , money(0)
 {
     members.push_back(MakeCharacter(
-        "Eliza", Element::Physical, Element::Ice, 12, 3, 2,
-        {
-            std::make_shared<SlashSkill>(),
-            std::make_shared<TarukajaSkill>(),
-            std::make_shared<RakukajaSkill>(),
-            std::make_shared<CleaveSkill>(),
-            std::make_shared<MatarukajaSkill>(),
-            std::make_shared<SkewerSkill>(),
-            std::make_shared<HeatWaveSkill>()
-        }));
+        "Eliza", Element::Light, Element::Dark, 10, 4, 1, Role::Mage));
 
     members.push_back(MakeCharacter(
-        "Ares", Element::Ice, Element::Fire, 10, 3, 1,
-        {
-            std::make_shared<BufuSkill>(),
-            std::make_shared<RakundaSkill>(),
-            std::make_shared<DiaSkill>(),
-            std::make_shared<BufulaSkill>(),
-            std::make_shared<MazioSkill>(),
-            std::make_shared<DiaramaSkill>()
-        }));
+        "Ares", Element::Fire, Element::Ice, 14, 4, 3, Role::Warrior));
 
     members.push_back(MakeCharacter(
-        "Leo", Element::Fire, Element::Ice, 11, 3, 1,
-        {
-            std::make_shared<AgiSkill>(),
-            std::make_shared<TarundaSkill>(),
-            std::make_shared<MediaSkill>(),
-            std::make_shared<AgilaoSkill>(),
-            std::make_shared<MaragiSkill>(),
-            std::make_shared<MaragionSkill>()
-        }));
+        "Leo", Element::Light, Element::Dark, 11, 3, 2, Role::Priest));
 
     members.push_back(MakeCharacter(
-        "Troy", Element::Physical, Element::Fire, 14, 2, 3,
-        {
-            std::make_shared<StrikeSkill>(),
-            std::make_shared<SukukajaSkill>(),
-            std::make_shared<SukundaSkill>(),
-            std::make_shared<MightyBlowSkill>(),
-            std::make_shared<MasukukajaSkill>(),
-            std::make_shared<RampageSkill>()
-        }));
+        "Troy", Element::Physical, Element::Light, 12, 4, 2, Role::Thief));
+
+    for (Character& member : members)
+    {
+        RecalculateStats(member);
+        member.hp = member.maxHp;
+    }
 }
 
 std::vector<Character>& Party::Members()
@@ -241,6 +335,17 @@ void Party::GainXp(int amount)
                       << member.level << "\n";
         }
     }
+}
+
+void Party::SetRole(int memberIndex, Role role)
+{
+    if (memberIndex < 0 || memberIndex >= static_cast<int>(members.size()))
+        return;
+
+    Character& member = members[memberIndex];
+    member.role = role;
+    member.skills = SkillsForRole(role);
+    RecalculateStats(member);
 }
 
 std::vector<EquipmentId> EquipmentOptions(const Character& member,

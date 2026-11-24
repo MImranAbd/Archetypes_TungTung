@@ -33,7 +33,7 @@ namespace
         {
             "Skeleton",
             "res/draw/Character/Enemies list/Skeleton.png",
-            Element::Fire, 1, 0,
+            Element::Light, 1, 0,
             {
                 { "Bone Toss", EnemyActionKind::Damage, Element::Physical,
                     EnemyStat::None, 1, 0.90f, 2 },
@@ -44,7 +44,7 @@ namespace
         {
             "Skeleton Archer",
             "res/draw/Character/Enemies list/Skeleton Archer.png",
-            Element::Ice, 0, 1,
+            Element::Light, 0, 1,
             {
                 { "Aimed Shot", EnemyActionKind::Damage, Element::Physical,
                     EnemyStat::None, 2, 0.95f, 3 },
@@ -66,7 +66,7 @@ namespace
         {
             "Greatsword Skeleton",
             "res/draw/Character/Enemies list/Greatsword Skeleton.png",
-            Element::Fire, 3, 1,
+            Element::Light, 3, 1,
             {
                 { "Cleaving Arc", EnemyActionKind::DamageAll, Element::Physical,
                     EnemyStat::None, 1, 0.80f, 3 },
@@ -77,7 +77,7 @@ namespace
         {
             "Armored Skeleton",
             "res/draw/Character/Enemies list/Armored Skeleton.png",
-            Element::Ice, 2, 0,
+            Element::Light, 2, 0,
             {
                 { "Iron Guard", EnemyActionKind::BuffSelf, Element::Physical,
                     EnemyStat::Defense, 0, 1.0f, 2 },
@@ -132,9 +132,9 @@ namespace
         {
             "Knight Templar",
             "res/draw/Character/Enemies list/Knight Templar.png",
-            Element::Fire, 4, 1,
+            Element::Dark, 4, 1,
             {
-                { "Holy Strike", EnemyActionKind::Damage, Element::Physical,
+                { "Holy Strike", EnemyActionKind::Damage, Element::Light,
                     EnemyStat::None, 2, 0.85f, 3 },
                 { "Guard All", EnemyActionKind::BuffAllies, Element::Physical,
                     EnemyStat::Defense, 0, 1.0f, 3 }
@@ -231,31 +231,31 @@ namespace
         {
             "Priest",
             "res/draw/Character/Enemies list/Priest.png",
-            Element::Physical, 0, 1,
+            Element::Dark, 0, 1,
             {
-                { "Dia", EnemyActionKind::HealAlly, Element::Physical,
+                { "Dia", EnemyActionKind::HealAlly, Element::Light,
                     EnemyStat::None, 6, 1.0f, 2 },
-                { "Media", EnemyActionKind::HealAllies, Element::Physical,
+                { "Media", EnemyActionKind::HealAllies, Element::Light,
                     EnemyStat::None, 4, 1.0f, 3 }
             }
         },
         {
             "Necromancer",
             "res/draw/Character/Enemies list/Necromancer.png",
-            Element::Fire, 1, 2,
+            Element::Light, 1, 2,
             {
-                { "Drain", EnemyActionKind::Drain, Element::Physical,
+                { "Drain", EnemyActionKind::Drain, Element::Dark,
                     EnemyStat::None, 2, 0.90f, 3 },
-                { "Curse", EnemyActionKind::DebuffParty, Element::Physical,
+                { "Curse", EnemyActionKind::DebuffParty, Element::Dark,
                     EnemyStat::Attack, 0, 1.0f, 2 }
             }
         },
         {
             "Demon",
             "res/draw/Character/Enemies list/Demon_A.png",
-            Element::Ice, 3, 2,
+            Element::Light, 3, 2,
             {
-                { "Dark Flame", EnemyActionKind::Damage, Element::Fire,
+                { "Dark Flame", EnemyActionKind::Damage, Element::Dark,
                     EnemyStat::None, 2, 0.85f, 3 },
                 { "Fear", EnemyActionKind::DebuffParty, Element::Physical,
                     EnemyStat::Accuracy, 0, 1.0f, 3 }
@@ -264,9 +264,9 @@ namespace
         {
             "Blood Monster",
             "res/draw/Character/Enemies list/Blood Monster_A.png",
-            Element::Fire, 2, 2,
+            Element::Light, 2, 2,
             {
-                { "Blood Drain", EnemyActionKind::Drain, Element::Physical,
+                { "Blood Drain", EnemyActionKind::Drain, Element::Dark,
                     EnemyStat::None, 2, 0.90f, 3 },
                 { "Hemorrhage", EnemyActionKind::DamageAll, Element::Physical,
                     EnemyStat::None, 1, 0.85f, 3 }
@@ -290,20 +290,22 @@ const char* EnemyKindName(EnemyKind kind)
     return GetEnemyDef(kind).name;
 }
 
+EnemyKind BossKindForFloor(int floorNumber)
+{
+    switch (floorNumber / 10)
+    {
+        case 1: return EnemyKind::EliteOrc;
+        case 2: return EnemyKind::KnightTemplar;
+        case 3: return EnemyKind::Demon;
+        case 4: return EnemyKind::BloodMonster;
+        default: return EnemyKind::Necromancer;
+    }
+}
+
 EnemyKind RandomEnemyKindForFloor(int floorNumber, bool elite)
 {
     if (elite)
-    {
-        static const EnemyKind bosses[] = {
-            EnemyKind::Demon,
-            EnemyKind::Werebear,
-            EnemyKind::KnightTemplar,
-            EnemyKind::BloodMonster,
-            EnemyKind::Necromancer
-        };
-
-        return bosses[GetRandomValue(0, 4)];
-    }
+        return BossKindForFloor(floorNumber);
 
     int maxKind = 4 + (floorNumber / 3) * 4;
 
@@ -476,4 +478,6 @@ Element Enemy::GetWeakness() const
 {
     return weakness;
 }
+
+
 

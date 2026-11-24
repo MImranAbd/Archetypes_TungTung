@@ -42,6 +42,7 @@ int main()
     Enemy enemy(enemyX, enemyY, 6);
 
     inventory.Add(ItemType::Herb, 1);
+    inventory.Add(ItemType::Revive, 1);
     inventory.AddEquipment(EquipmentId::IronSword, 1);
     inventory.AddEquipment(EquipmentId::LeatherArmor, 1);
 
@@ -71,6 +72,7 @@ int main()
     int menuSelection = 0;
     bool helpOpen = false;
     bool quitRequested = false;
+    bool ending = false;
 
     bool pendingBattle = false;
     bool pendingAmbush = false;
@@ -126,26 +128,50 @@ int main()
     {
         int newSpawnX = 0;
         int newSpawnY = 0;
-        map.Generate(newSpawnX, newSpawnY);
+        const bool bossFloor = (dungeonFloor % 10 == 0);
+        map.Generate(newSpawnX, newSpawnY, bossFloor);
         ball.SetGridPosition(newSpawnX, newSpawnY);
         snapCamera = true;
 
-        int newEnemyX = newSpawnX;
-        int newEnemyY = newSpawnY;
-
-        if (map.FindFreeCell(newEnemyX, newEnemyY, newSpawnX, newSpawnY, 8))
+        if (bossFloor)
         {
-            enemy.Reset(newEnemyX, newEnemyY, 6);
-            enemy.SetKind(RandomEnemyKindForFloor(dungeonFloor,
-                dungeonFloor % 10 == 0));
+            const EnemyKind bossKind = BossKindForFloor(dungeonFloor);
+            const int bossHp = 100 * (dungeonFloor / 10) +
+                GetEnemyDef(bossKind).hpBonus;
+
+            enemy.Reset(24, 13, bossHp);
+            enemy.SetKind(bossKind);
         }
         else
         {
-            enemy.SetActive(false);
+            int newEnemyX = newSpawnX;
+            int newEnemyY = newSpawnY;
+
+            if (map.FindFreeCell(newEnemyX, newEnemyY, newSpawnX, newSpawnY, 8))
+            {
+                enemy.Reset(newEnemyX, newEnemyY, 6);
+                enemy.SetKind(RandomEnemyKindForFloor(dungeonFloor, false));
+            }
+            else
+            {
+                enemy.SetActive(false);
+            }
+        }
+    };
+
+    auto tryDescend = [&]()
+    {
+        if (dungeonFloor % 10 == 0 && enemy.IsActive())
+            return;
+
+        if (dungeonFloor >= 50)
+        {
+            ending = true;
+            return;
         }
 
-        pendingBattle = false;
-        pendingAmbush = false;
+        dungeonFloor++;
+        loadDungeon();
     };
 
     auto startNewGame = [&]()
@@ -153,6 +179,7 @@ int main()
         party = Party();
         inventory = Inventory();
         inventory.Add(ItemType::Herb, 1);
+        inventory.Add(ItemType::Revive, 1);
         inventory.AddEquipment(EquipmentId::IronSword, 1);
         inventory.AddEquipment(EquipmentId::LeatherArmor, 1);
 
@@ -195,6 +222,43 @@ int main()
         if (ItemCategoryOf(type) != ItemCategory::Healing)
         {
             pauseMenu.message = "That item cannot be used here.";
+            return;
+        }
+
+        if (ItemRevives(type))
+        {
+            if (targetIndex < 0 ||
+                targetIndex >= static_cast<int>(party.Members().size()))
+                return;
+
+            Character& target = party.Members()[targetIndex];
+
+            if (target.hp > 0)
+            {
+                pauseMenu.message = std::string(target.name) + " is not fallen.";
+                return;
+            }
+
+            int restored = ItemReviveHp(type);
+            if (restored > target.maxHp) restored = target.maxHp;
+
+            target.hp = restored;
+            target.smirk = false;
+            target.anxious = false;
+            inventory.Consume(type);
+
+            pauseMenu.message = std::string(ItemName(type)) + " revives "
+                + target.name + " with " + std::to_string(restored) + " HP!";
+            pauseMenu.itemTargeting = false;
+
+            std::vector<const ItemStack*> remaining =
+                ItemStacksInCategory(inventory, category);
+
+            if (remaining.empty())
+                pauseMenu.itemIndex = 0;
+            else if (pauseMenu.itemIndex >= static_cast<int>(remaining.size()))
+                pauseMenu.itemIndex = static_cast<int>(remaining.size()) - 1;
+
             return;
         }
 
@@ -333,6 +397,22 @@ int main()
         if (battleMusicActive)
             UpdateMusicStream(battleMusic);
 
+        if (ending)
+        {
+            if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) ||
+                IsKeyPressed(KEY_J) || IsKeyPressed(KEY_K) ||
+                IsKeyPressed(KEY_ESCAPE))
+            {
+                ending = false;
+                state = AppState::MainMenu;
+            }
+
+            BeginDrawing();
+            ui.DrawEnding();
+            EndDrawing();
+            continue;
+        }
+
         if (state == AppState::MainMenu) //tung
         {
             if (helpOpen)
@@ -434,6 +514,14 @@ int main()
                         {
                             const int memberCount =
                                 static_cast<int>(party.Members().size());
+                            const ItemCategory category = static_cast<ItemCategory>(
+                                pauseMenu.itemCategory);
+                            std::vector<const ItemStack*> items =
+                                ItemStacksInCategory(inventory, category);
+                            const bool reviving = !items.empty() &&
+                                pauseMenu.itemIndex >= 0 &&
+                                pauseMenu.itemIndex < static_cast<int>(items.size()) &&
+                                ItemRevives(items[pauseMenu.itemIndex]->type);
 
                             if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W))
                             {
@@ -442,7 +530,9 @@ int main()
                                     pauseMenu.targetIndex = (pauseMenu.targetIndex +
                                         memberCount - 1) % memberCount;
 
-                                    if (party.Members()[pauseMenu.targetIndex].hp > 0)
+                                    if (reviving
+                                        ? party.Members()[pauseMenu.targetIndex].hp <= 0
+                                        : party.Members()[pauseMenu.targetIndex].hp > 0)
                                         break;
                                 }
                             }
@@ -454,7 +544,9 @@ int main()
                                     pauseMenu.targetIndex = (pauseMenu.targetIndex + 1) %
                                         memberCount;
 
-                                    if (party.Members()[pauseMenu.targetIndex].hp > 0)
+                                    if (reviving
+                                        ? party.Members()[pauseMenu.targetIndex].hp <= 0
+                                        : party.Members()[pauseMenu.targetIndex].hp > 0)
                                         break;
                                 }
                             }
@@ -515,24 +607,60 @@ int main()
                                 }
                                 else
                                 {
-                                    pauseMenu.itemTargeting = true;
-                                    pauseMenu.targetIndex = pauseMenu.memberIndex;
+                                    if (pauseMenu.itemIndex < 0 ||
+                                        pauseMenu.itemIndex >= itemCount)
+                                        pauseMenu.itemIndex = 0;
 
-                                    if (party.Members()[pauseMenu.targetIndex].hp <= 0)
+                                    const ItemType type =
+                                        items[pauseMenu.itemIndex]->type;
+                                    const bool reviving = ItemRevives(type);
+                                    const int memberCount = static_cast<int>(
+                                        party.Members().size());
+
+                                    if (reviving)
                                     {
-                                        const int memberCount = static_cast<int>(
-                                            party.Members().size());
+                                        int fallen = -1;
+
                                         for (int i = 0; i < memberCount; i++)
                                         {
-                                            if (party.Members()[i].hp > 0)
+                                            if (party.Members()[i].hp <= 0)
                                             {
-                                                pauseMenu.targetIndex = i;
+                                                fallen = i;
                                                 break;
                                             }
                                         }
-                                    }
 
-                                    pauseMenu.message = "Choose an ally.";
+                                        if (fallen < 0)
+                                        {
+                                            pauseMenu.message =
+                                                "No fallen ally to revive.";
+                                        }
+                                        else
+                                        {
+                                            pauseMenu.itemTargeting = true;
+                                            pauseMenu.targetIndex = fallen;
+                                            pauseMenu.message = "Choose a fallen ally.";
+                                        }
+                                    }
+                                    else
+                                    {
+                                        pauseMenu.itemTargeting = true;
+                                        pauseMenu.targetIndex = pauseMenu.memberIndex;
+
+                                        if (party.Members()[pauseMenu.targetIndex].hp <= 0)
+                                        {
+                                            for (int i = 0; i < memberCount; i++)
+                                            {
+                                                if (party.Members()[i].hp > 0)
+                                                {
+                                                    pauseMenu.targetIndex = i;
+                                                    break;
+                                                }
+                                            }
+                                        }
+
+                                        pauseMenu.message = "Choose an ally.";
+                                    }
                                 }
                             }
                         }
@@ -642,7 +770,7 @@ int main()
             {
                 if (IsKeyPressed(KEY_F9))
                 {
-                    dungeonFloor = 100;
+                    dungeonFloor = 50;
                     loadDungeon();
                 }
                 else if (IsKeyPressed(KEY_P) || IsKeyPressed(KEY_ESCAPE) ||
@@ -692,8 +820,7 @@ int main()
 
                     if (reachedExit)
                     {
-                        dungeonFloor++;
-                        loadDungeon();
+                        tryDescend();
                     }
                     else
                     {
@@ -701,13 +828,11 @@ int main()
                         int exitY = 0;
 
                         if (ball.ConsumeExit(exitX, exitY))
-                        {
-                            dungeonFloor++;
-                            loadDungeon();
-                        }
+                            tryDescend();
                     }
 
-                    enemy.Update(ball.GetGridX(), ball.GetGridY(), map);
+                    if (dungeonFloor % 10 != 0)
+                        enemy.Update(ball.GetGridX(), ball.GetGridY(), map);
 
                     if (enemy.IsActive() &&
                         enemy.GetGridX() == ball.GetGridX() &&

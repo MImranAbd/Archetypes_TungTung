@@ -89,6 +89,8 @@ namespace
             case SkillKind::Heal:
             case SkillKind::HealAll:
                 return { 120, 210, 140, 255 };
+            case SkillKind::Revive:
+                return { 235, 210, 120, 255 };
             case SkillKind::BuffAttack:
             case SkillKind::BuffAttackAll:
                 return { 225, 130, 95, 255 };
@@ -269,13 +271,21 @@ void Battle::UseSkill(int skillIndex)
     lastActionTargetOnParty = false;
     lastActionTargetIndex = -1;
 
+    const bool reviving = skill.IsRevive();
     int allyTarget = selectedAlly;
 
     if (allyTarget < 0 || allyTarget >= static_cast<int>(party.Members().size()) ||
-        party.Members()[allyTarget].hp <= 0)
+        (reviving ? party.Members()[allyTarget].hp > 0
+            : party.Members()[allyTarget].hp <= 0))
     {
-        allyTarget = FindLowestHpAlly();
-        if (allyTarget < 0) return;
+        allyTarget = reviving ? FindFallenAlly() : FindLowestHpAlly();
+
+        if (allyTarget < 0)
+        {
+            message = reviving ? "No fallen ally to revive." : "No ally to target.";
+            return;
+        }
+
         selectedAlly = allyTarget;
     }
 
@@ -306,7 +316,12 @@ void Battle::UseSkill(int skillIndex)
 
             if (missing > 0)
             {
-                const int healed = (skill.GetPower() < missing) ? skill.GetPower() : missing;
+                int healPower = skill.GetPower();
+
+                if (actor.role == Role::Priest)
+                    healPower += 2;
+
+                const int healed = (healPower < missing) ? healPower : missing;
 
                 target.hp += healed;
                 lastActionHasTarget = true;
@@ -334,8 +349,13 @@ void Battle::UseSkill(int skillIndex)
 
                 if (member.hp <= 0 || member.hp >= member.maxHp) continue;
 
-                const int healed = (skill.GetPower() < member.maxHp - member.hp)
-                    ? skill.GetPower() : (member.maxHp - member.hp);
+                int healPower = skill.GetPower();
+
+                if (actor.role == Role::Priest)
+                    healPower += 2;
+
+                const int healed = (healPower < member.maxHp - member.hp)
+                    ? healPower : (member.maxHp - member.hp);
 
                 member.hp += healed;
                 healedTotal += healed;
@@ -344,6 +364,39 @@ void Battle::UseSkill(int skillIndex)
 
             message = who + " casts " + skill.GetName() + ". The party recovers "
                 + std::to_string(healedTotal) + " HP.";
+        } break;
+
+        case SkillKind::Revive:
+        {
+            Character& target = party.Members()[allyTarget];
+
+            if (target.hp > 0)
+            {
+                message = who + " casts " + skill.GetName() + ". " + target.name
+                    + " is not fallen.";
+            }
+            else
+            {
+                int reviveHp = skill.GetPower();
+
+                if (actor.role == Role::Priest)
+                    reviveHp += 2;
+
+                if (reviveHp > target.maxHp)
+                    reviveHp = target.maxHp;
+
+                target.hp = reviveHp;
+                target.smirk = false;
+                target.anxious = false;
+
+                lastActionHasTarget = true;
+                lastActionTargetOnParty = true;
+                lastActionTargetIndex = allyTarget;
+
+                AddActionText("REVIVE", allyTarget, true, supportColor);
+                message = who + " casts " + skill.GetName() + ". " + target.name
+                    + " returns with " + std::to_string(reviveHp) + " HP!";
+            }
         } break;
 
         case SkillKind::BuffAttack:
@@ -525,6 +578,10 @@ void Battle::UseSkill(int skillIndex)
     {
         SetBuffEffect(SkillKind::HealAll, true, -1);
     }
+    else if (skill.GetKind() == SkillKind::Revive)
+    {
+        SetBuffEffect(SkillKind::Revive, true, allyTarget);
+    }
 
     std::cout << "[PARTY] " << actor.name << " uses " << skill.GetName() << " | "
               << message << "\n";
@@ -556,20 +613,53 @@ bool Battle::UseItem(ItemType type, int targetIndex)
         return false;
 
     Character& target = party.Members()[targetIndex];
+    const bool revives = ItemRevives(type);
 
-    if (target.hp <= 0) return false;
-
-    if (target.hp >= target.maxHp)
+    if (revives)
     {
-        message = std::string(target.name) + " is already at full health.";
-        return false;
+        if (target.hp > 0)
+        {
+            message = std::string(target.name) + " is not fallen.";
+            return false;
+        }
+    }
+    else
+    {
+        if (target.hp <= 0)
+        {
+            message = std::string("Cannot heal a fallen ally with ")
+                + ItemName(type) + ".";
+            return false;
+        }
+
+        if (target.hp >= target.maxHp)
+        {
+            message = std::string(target.name) + " is already at full health.";
+            return false;
+        }
     }
 
-    int healed = ItemHeal(type);
-    const int missing = target.maxHp - target.hp;
-    if (healed > missing) healed = missing;
+    int restored = 0;
 
-    target.hp += healed;
+    if (revives)
+    {
+        restored = ItemReviveHp(type);
+        if (restored > target.maxHp) restored = target.maxHp;
+
+        target.hp = restored;
+        target.smirk = false;
+        target.anxious = false;
+    }
+    else
+    {
+        restored = ItemHeal(type);
+
+        const int missing = target.maxHp - target.hp;
+        if (restored > missing) restored = missing;
+
+        target.hp += restored;
+    }
+
     inventory.Consume(type);
 
     Character& actor = party.Active();
@@ -582,15 +672,25 @@ bool Battle::UseItem(ItemType type, int targetIndex)
     lastActionTargetOnParty = true;
     lastActionTargetIndex = targetIndex;
 
-    message = std::string(ItemName(type)) + " restores " + std::to_string(healed)
-        + " HP to " + target.name + ".";
+    if (revives)
+    {
+        message = std::string(ItemName(type)) + " revives " + target.name
+            + " with " + std::to_string(restored) + " HP!";
+    }
+    else
+    {
+        message = std::string(ItemName(type)) + " restores "
+            + std::to_string(restored) + " HP to " + target.name + ".";
+    }
 
-    std::cout << "[ITEM] " << target.name << " recovers " << healed
-              << " HP with " << ItemName(type) << "\n";
+    std::cout << "[ITEM] " << target.name
+              << (revives ? " revived with " : " recovers ")
+              << restored << " HP with " << ItemName(type) << "\n";
 
     SpendPlayerFullPoints();
 
-    const Color supportColor = SupportEffectColor(SkillKind::Heal);
+    const SkillKind fxKind = revives ? SkillKind::Revive : SkillKind::Heal;
+    const Color supportColor = SupportEffectColor(fxKind);
 
     actionBanner = ItemName(type);
     actionBannerTimer = Battle::actionDuration;
@@ -599,8 +699,9 @@ bool Battle::UseItem(ItemType type, int targetIndex)
     actionAttackPose = false;
     supportFlashTimer = Battle::supportFlashDuration;
     supportFlashColor = supportColor;
-    AddActionText("+" + std::to_string(healed), targetIndex, true, supportColor);
-    SetBuffEffect(SkillKind::Heal, true, targetIndex);
+    AddActionText(revives ? "REVIVE" : ("+" + std::to_string(restored)),
+        targetIndex, true, supportColor);
+    SetBuffEffect(fxKind, true, targetIndex);
 
     LogState();
     RotateCharacter();
@@ -660,6 +761,8 @@ void Battle::PlayerAttack(const Skill& skill)
         hitChance -= 0.15f * partyBuffs[actorIndex].enemyAccuracyDown.stacks;
     if (enemyBuffs[selectedTarget].evasionUp.stacks > 0)
         hitChance -= 0.15f * enemyBuffs[selectedTarget].evasionUp.stacks;
+    if (actor.role == Role::Mage)
+        hitChance += 0.05f;
 
     if (hitChance < 0.05f) hitChance = 0.05f;
     if (hitChance > 0.99f) hitChance = 0.99f;
@@ -687,6 +790,7 @@ void Battle::PlayerAttack(const Skill& skill)
         float critChance = 0.10f;
         if (smirk) critChance += 0.40f;
         if (anxious) critChance -= 0.05f;
+        if (actor.role == Role::Thief) critChance += 0.10f;
         if (critChance < 0.0f) critChance = 0.0f;
 
         const bool crit = Chance(critChance);
@@ -701,6 +805,12 @@ void Battle::PlayerAttack(const Skill& skill)
             damage += enemyBuffs[selectedTarget].enemyDefenseDown.stacks;
         if (enemyBuffs[selectedTarget].defenseUp.stacks > 0)
             damage -= enemyBuffs[selectedTarget].defenseUp.stacks;
+        if (actor.role == Role::Warrior && skill.GetElement() == Element::Physical)
+            damage += 1;
+        if (actor.role == Role::Mage && skill.GetElement() != Element::Physical)
+            damage += 1;
+        if (actor.role == Role::Priest && skill.GetElement() == Element::Light)
+            damage += 1;
         if (weak) damage += 1;
         if (crit) damage += 1;
         if (damage < 1) damage = 1;
@@ -745,9 +855,8 @@ void Battle::PlayerAttack(const Skill& skill)
 
     if (AllEnemiesDead())
     {
-        phase = Phase::Victory;
+        pendingVictory = true;
         message = "ALL ENEMIES FALL!";
-        std::cout << "=== VICTORY ===\n";
         return;
     }
 
@@ -795,6 +904,8 @@ void Battle::PlayerAttackAll(const Skill& skill)
     if (enemyAnxious) hitChance += 0.20f;
     if (partyBuffs[actorIndex].enemyAccuracyDown.stacks > 0)
         hitChance -= 0.15f * partyBuffs[actorIndex].enemyAccuracyDown.stacks;
+    if (actor.role == Role::Mage)
+        hitChance += 0.05f;
 
     int maxEvasion = 0;
 
@@ -843,6 +954,7 @@ void Battle::PlayerAttackAll(const Skill& skill)
             float critChance = 0.10f;
             if (smirk) critChance += 0.40f;
             if (anxious) critChance -= 0.05f;
+            if (actor.role == Role::Thief) critChance += 0.10f;
             if (critChance < 0.0f) critChance = 0.0f;
 
             const bool crit = Chance(critChance);
@@ -857,6 +969,12 @@ void Battle::PlayerAttackAll(const Skill& skill)
                 damage += enemyBuffs[i].enemyDefenseDown.stacks;
             if (enemyBuffs[i].defenseUp.stacks > 0)
                 damage -= enemyBuffs[i].defenseUp.stacks;
+            if (actor.role == Role::Warrior && skill.GetElement() == Element::Physical)
+                damage += 1;
+            if (actor.role == Role::Mage && skill.GetElement() != Element::Physical)
+                damage += 1;
+            if (actor.role == Role::Priest && skill.GetElement() == Element::Light)
+                damage += 1;
             if (weak) damage += 1;
             if (crit) damage += 1;
             if (damage < 1) damage = 1;
@@ -912,9 +1030,8 @@ void Battle::PlayerAttackAll(const Skill& skill)
 
     if (AllEnemiesDead())
     {
-        phase = Phase::Victory;
+        pendingVictory = true;
         message = "ALL ENEMIES FALL!";
-        std::cout << "=== VICTORY ===\n";
         return;
     }
 

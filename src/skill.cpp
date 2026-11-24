@@ -56,6 +56,11 @@ bool Skill::IsHealAll() const
     return kind == SkillKind::HealAll;
 }
 
+bool Skill::IsRevive() const
+{
+    return kind == SkillKind::Revive;
+}
+
 bool Skill::IsPartyBuff() const
 {
     return kind == SkillKind::BuffAttack ||
@@ -98,6 +103,7 @@ bool Skill::IsAllTarget() const
 bool Skill::TargetsAlly() const
 {
     return kind == SkillKind::Heal ||
+        kind == SkillKind::Revive ||
         (IsPartyBuff() && !IsPartyBuffAll());
 }
 
@@ -224,6 +230,42 @@ DiaramaSkill::DiaramaSkill()
 MaragionSkill::MaragionSkill()
     : Skill("Maragion", SkillKind::AttackAll, Element::Fire, 2, 4,
         "Heavy fire damage to all foes.")
+{
+}
+
+HamaSkill::HamaSkill()
+    : Skill("Hama", SkillKind::Attack, Element::Light, 2, 3,
+        "Light damage to one foe.")
+{
+}
+
+MudoSkill::MudoSkill()
+    : Skill("Mudo", SkillKind::Attack, Element::Dark, 2, 3,
+        "Dark damage to one foe.")
+{
+}
+
+MahamaSkill::MahamaSkill()
+    : Skill("Mahama", SkillKind::AttackAll, Element::Light, 1, 4,
+        "Light damage to all foes.")
+{
+}
+
+MamudoSkill::MamudoSkill()
+    : Skill("Mamudo", SkillKind::AttackAll, Element::Dark, 1, 4,
+        "Dark damage to all foes.")
+{
+}
+
+MediaramaSkill::MediaramaSkill()
+    : Skill("Mediarama", SkillKind::HealAll, Element::Light, 6, 5,
+        "Restores 6 HP to all allies.")
+{
+}
+
+RecarmSkill::RecarmSkill()
+    : Skill("Recarm", SkillKind::Revive, Element::Light, 10, 4,
+        "Revives one fallen ally with 10 HP.")
 {
 }
 

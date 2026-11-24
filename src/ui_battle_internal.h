@@ -24,7 +24,7 @@ namespace BattleUi
     void DrawPartyActor(int index, Vector2 pos, int activeIndex, int attackingIndex,
         const Party& party, Color effectTint = BLANK);
     void DrawEnemyActor(int index, Vector2 pos, bool selected, const Enemy& enemy,
-        Color effectTint = BLANK, bool acting = false);
+        Color effectTint = BLANK, bool acting = false, float sizeScale = 1.0f);
     void DrawPartyCards(const Battle& battle, int x, int y, int width);
     void DrawBattleVictory(const Battle& battle);
     void DrawBattleDefeat();

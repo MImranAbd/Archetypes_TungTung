@@ -6,9 +6,30 @@
 #include "inventory.h"
 #include "skill.h"
 
+enum class Role
+{
+    Mage,
+    Thief,
+    Warrior,
+    Priest
+};
+
+struct Passive
+{
+    const char* name;
+    const char* description;
+};
+
+const char* RoleName(Role role);
+const char* RoleDescription(Role role);
+int RolePassiveCount(Role role);
+const Passive& RolePassive(Role role, int index);
+SkillList SkillsForRole(Role role);
+
 struct Character
 {
     const char* name;
+    Role role;
     Element element;
     Element weakness;
     int hp;
@@ -59,6 +80,7 @@ public:
     bool CycleEquipment(int memberIndex, EquipSlot slot, Inventory& inventory);
     bool EquipItem(int memberIndex, EquipSlot slot, EquipmentId id,
         Inventory& inventory);
+    void SetRole(int memberIndex, Role role);
 
     static int XpForNextLevel(int level);
 

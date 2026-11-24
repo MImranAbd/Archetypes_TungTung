@@ -157,6 +157,62 @@ void Battle::ResolveEnemyAttack()
     const EnemyDef& def = GetEnemyDef(enemies[enemyTurnIndex].GetKind());
     const std::string enemyName = "E" + std::to_string(enemyTurnIndex + 1);
 
+    if (bossSummonPending &&
+        enemies[enemyTurnIndex].GetKind() == EnemyKind::Necromancer &&
+        static_cast<int>(enemies.size()) < 5)
+    {
+        bossSummonPending = false;
+
+        const int skeletonHp = battleEnemyHp + floorNumber / 4 +
+            GetEnemyDef(EnemyKind::Skeleton).hpBonus;
+
+        enemies.emplace_back(0, 0, skeletonHp, EnemyKind::Skeleton);
+        weaknessKnown.resize(enemies.size(), false);
+
+        actionCinematic = true;
+        actionWideParty = false;
+        actionAttackPose = true;
+        actionTexts.clear();
+        supportFlashTimer = Battle::supportFlashDuration;
+        supportFlashColor = { 160, 120, 220, 255 };
+        actionBanner = "Enemy Summon";
+        actionBannerTimer = Battle::actionDuration;
+        lastActorParty = -1;
+        lastActorEnemy = enemyTurnIndex;
+        lastActionHasTarget = false;
+        lastActionTargetOnParty = false;
+        lastActionTargetIndex = -1;
+
+        AddActionText("SUMMON", enemyTurnIndex, false, supportFlashColor);
+        message = enemyName + " THE NECROMANCER SUMMONS A SKELETON!";
+
+        SpendEnemyFullPoints();
+        SpendEnemyHalfPoint(false);
+        if (enemyPoints < 0) enemyPoints = 0;
+
+        LogState();
+
+        if (enemyPoints <= 0)
+        {
+            StartPlayerTurn();
+            return;
+        }
+
+        const int next = FindNextAliveEnemy(enemyTurnIndex + 1);
+
+        if (next < 0)
+        {
+            phase = Phase::Victory;
+            return;
+        }
+
+        enemyTurnIndex = next;
+        turnTimer = 1.4f;
+        return;
+    }
+
+    bossSummonPending = false;
+
     int weights[3] = { 40, 0, 0 };
 
     for (int s = 0; s < 2; s++)
@@ -563,6 +619,7 @@ void Battle::ResolveEnemyAttack()
         if (anxious) hitChance -= 0.25f;
         if (primary.smirk) hitChance -= 0.30f;
         if (primary.anxious) hitChance += 0.20f;
+        if (primary.role == Role::Thief) hitChance -= 0.10f;
         if (partyBuffs[primaryTarget].evasionUp.stacks > 0)
             hitChance -= 0.15f * partyBuffs[primaryTarget].evasionUp.stacks;
         if (enemyBuffs[enemyTurnIndex].enemyAccuracyDown.stacks > 0)
@@ -627,6 +684,7 @@ void Battle::ResolveEnemyAttack()
                     damage += partyBuffs[targetIndex].enemyDefenseDown.stacks;
 
                 if (defending) damage -= 3;
+                if (target.role == Role::Warrior) damage -= 1;
                 if (weak) damage += 1;
                 if (crit) damage += 1;
                 if (damage < 1) damage = 1;

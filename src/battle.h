@@ -51,6 +51,8 @@ public:
     enum class Command { Attack, Skill, Defense, Item, Pass, Escape };
 
     static constexpr int commandCount = 6;
+    static constexpr int itemMenuCount = 3;
+    static ItemType ItemAtMenuIndex(int index);
     static constexpr float actionDuration = 1.4f;
     static constexpr float hitFlashDuration = 0.6f;
     static constexpr float damagePopupDuration = 1.2f;
@@ -73,6 +75,7 @@ public:
     const std::vector<Enemy>& GetEnemies() const;
     int GetSelectedTarget() const;
     int GetSelectedAlly() const;
+    bool IsReviveTargeting() const;
     int GetSlashActor() const;
     int GetPlayerPoints() const;
     int GetEnemyPoints() const;
@@ -146,6 +149,7 @@ private:
     void SetBuffEffect(SkillKind kind, bool onParty, int target);
     int FindNextAliveEnemy(int start) const;
     int FindLowestHpAlly() const;
+    int FindFallenAlly() const;
     int LivingPartyCount() const;
     int LivingEnemyCount() const;
     bool AllEnemiesDead() const;
@@ -201,6 +205,8 @@ private:
     bool actionCinematic;
     bool actionWideParty;
     bool actionAttackPose;
+    bool pendingVictory;
+    bool bossSummonPending;
     float supportFlashTimer;
     Color supportFlashColor;
     std::vector<ActionText> actionTexts;

@@ -6,7 +6,9 @@ enum class Element
 {
     Physical,
     Ice,
-    Fire
+    Fire,
+    Light,
+    Dark
 };
 
 inline const char* ElementName(Element element)
@@ -16,6 +18,8 @@ inline const char* ElementName(Element element)
         case Element::Physical: return "PHYS";
         case Element::Ice:      return "ICE";
         case Element::Fire:     return "FIRE";
+        case Element::Light:    return "LIGHT";
+        case Element::Dark:     return "DARK";
     }
 
     return "???";
@@ -98,6 +102,7 @@ struct EnemyDef
 
 const EnemyDef& GetEnemyDef(EnemyKind kind);
 const char* EnemyKindName(EnemyKind kind);
+EnemyKind BossKindForFloor(int floorNumber);
 EnemyKind RandomEnemyKindForFloor(int floorNumber, bool elite);
 
 class Enemy

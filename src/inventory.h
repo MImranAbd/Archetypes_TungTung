@@ -6,7 +6,8 @@
 enum class ItemType
 {
     Herb,
-    Potion
+    Potion,
+    Revive
 };
 
 enum class ItemCategory
@@ -34,6 +35,8 @@ int ItemHeal(ItemType type);
 const char* ItemCategoryName(ItemCategory category);
 ItemCategory ItemCategoryOf(ItemType type);
 bool ItemTargetsAll(ItemType type);
+bool ItemRevives(ItemType type);
+int ItemReviveHp(ItemType type);
 
 class Inventory
 {

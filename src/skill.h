@@ -10,6 +10,7 @@ enum class SkillKind
     AttackAll,
     Heal,
     HealAll,
+    Revive,
     BuffAttack,
     BuffAttackAll,
     BuffDefense,
@@ -39,6 +40,7 @@ public:
     bool IsAttack() const;
     bool IsAttackAll() const;
     bool IsHealAll() const;
+    bool IsRevive() const;
     bool IsPartyBuff() const;
     bool IsPartyBuffAll() const;
     bool IsEnemyDebuff() const;
@@ -185,6 +187,42 @@ class MaragionSkill : public Skill
 {
 public:
     MaragionSkill();
+};
+
+class HamaSkill : public Skill
+{
+public:
+    HamaSkill();
+};
+
+class MudoSkill : public Skill
+{
+public:
+    MudoSkill();
+};
+
+class MahamaSkill : public Skill
+{
+public:
+    MahamaSkill();
+};
+
+class MamudoSkill : public Skill
+{
+public:
+    MamudoSkill();
+};
+
+class MediaramaSkill : public Skill
+{
+public:
+    MediaramaSkill();
+};
+
+class RecarmSkill : public Skill
+{
+public:
+    RecarmSkill();
 };
 
 class HeatWaveSkill : public Skill

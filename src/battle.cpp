@@ -54,6 +54,8 @@ Battle::Battle(Party& party, Inventory& inventory, int floorNumber,
     , actionCinematic(true)
     , actionWideParty(false)
     , actionAttackPose(false)
+    , pendingVictory(false)
+    , bossSummonPending(false)
     , supportFlashTimer(0.0f)
     , supportFlashColor(WHITE)
     , actionTexts()
@@ -176,6 +178,15 @@ void Battle::Update()
             damagePopups.erase(damagePopups.begin() + i);
     }
 
+    if (pendingVictory && phase == Phase::PlayerTurn && actionBannerTimer <= 0.0f)
+    {
+        pendingVictory = false;
+        phase = Phase::Victory;
+        message = "ALL ENEMIES FALL!";
+        std::cout << "=== VICTORY ===\n";
+        return;
+    }
+
     switch (phase)
     {
         case Phase::PlayerTurn:
@@ -235,7 +246,9 @@ void Battle::Update()
                     {
                         const Skill& skill = *active.skills[skillMenuIndex];
 
-                        if (skill.IsAllTarget())
+                        if (skill.IsRevive() && FindFallenAlly() < 0)
+                            message = "No fallen ally to revive.";
+                        else if (skill.IsAllTarget())
                             UseSkill(skillMenuIndex);
                         else
                             BeginTargetSelection(PendingAction::Skill);
@@ -249,15 +262,22 @@ void Battle::Update()
             }
             else if (menuState == MenuState::Item)
             {
-                if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W) ||
-                    IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S))
-                {
-                    itemMenuIndex = 1 - itemMenuIndex;
-                }
+                if (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_W))
+                    itemMenuIndex = (itemMenuIndex + itemMenuCount - 1) % itemMenuCount;
+
+                if (IsKeyPressed(KEY_DOWN) || IsKeyPressed(KEY_S))
+                    itemMenuIndex = (itemMenuIndex + 1) % itemMenuCount;
 
                 if (IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) ||
                     IsKeyPressed(KEY_J))
-                    BeginTargetSelection(PendingAction::Item);
+                {
+                    const ItemType type = ItemAtMenuIndex(itemMenuIndex);
+
+                    if (ItemRevives(type) && FindFallenAlly() < 0)
+                        message = "No fallen ally to revive.";
+                    else
+                        BeginTargetSelection(PendingAction::Item);
+                }
 
                 if (IsKeyPressed(KEY_ESCAPE) || IsKeyPressed(KEY_K))
                 {
@@ -390,6 +410,10 @@ void Battle::StartEnemyTurn()
         return;
     }
 
+    bossSummonPending = (floorNumber >= 50 &&
+        enemies[enemyTurnIndex].GetKind() == EnemyKind::Necromancer &&
+        turnNumber % 3 == 0);
+
     turnTimer = 1.4f;
 
     std::cout << "--- ENEMY TURN | Press Turn: " << (enemyPoints / 2.0f) << " icons ---\n";
@@ -478,10 +502,11 @@ void Battle::BeginTargetSelection(PendingAction action)
     menuState = MenuState::Target;
 
     Character& active = party.Active();
+    const bool reviveMode = IsReviveTargeting();
 
     if (action == PendingAction::Item)
     {
-        const int best = FindLowestHpAlly();
+        const int best = reviveMode ? FindFallenAlly() : FindLowestHpAlly();
         if (best >= 0) selectedAlly = best;
     }
     else if (action == PendingAction::Skill &&
@@ -490,7 +515,12 @@ void Battle::BeginTargetSelection(PendingAction action)
     {
         const Skill& skill = *active.skills[skillMenuIndex];
 
-        if (skill.TargetsAlly())
+        if (skill.IsRevive())
+        {
+            const int best = FindFallenAlly();
+            if (best >= 0) selectedAlly = best;
+        }
+        else if (skill.TargetsAlly())
         {
             if (skill.GetKind() == SkillKind::Heal)
             {
@@ -512,13 +542,14 @@ void Battle::BeginTargetSelection(PendingAction action)
     }
 
     if (selectedAlly < 0 || selectedAlly >= static_cast<int>(party.Members().size()) ||
-        party.Members()[selectedAlly].hp <= 0)
+        (reviveMode ? party.Members()[selectedAlly].hp > 0
+            : party.Members()[selectedAlly].hp <= 0))
     {
-        const int best = FindLowestHpAlly();
+        const int best = reviveMode ? FindFallenAlly() : FindLowestHpAlly();
         if (best >= 0) selectedAlly = best;
     }
 
-    message = "Choose a target.";
+    message = reviveMode ? "Choose a fallen ally." : "Choose a target.";
 }
 
 void Battle::ExecutePendingAction()
@@ -540,7 +571,7 @@ void Battle::ExecutePendingAction()
     }
     else if (pendingAction == PendingAction::Item)
     {
-        const ItemType type = (itemMenuIndex == 0) ? ItemType::Herb : ItemType::Potion;
+        const ItemType type = ItemAtMenuIndex(itemMenuIndex);
 
         if (UseItem(type, selectedAlly))
             pendingAction = PendingAction::None;
@@ -566,12 +597,14 @@ void Battle::SelectTarget(int direction)
 void Battle::SelectAlly(int direction)
 {
     const int count = static_cast<int>(party.Members().size());
+    const bool reviveMode = IsReviveTargeting();
 
     for (int i = 1; i <= count; i++)
     {
         const int index = ((selectedAlly + direction * i) % count + count) % count;
 
-        if (party.Members()[index].hp > 0)
+        if (reviveMode ? party.Members()[index].hp <= 0
+            : party.Members()[index].hp > 0)
         {
             selectedAlly = index;
             return;
@@ -608,6 +641,47 @@ int Battle::FindLowestHpAlly() const
     }
 
     return best;
+}
+
+int Battle::FindFallenAlly() const
+{
+    for (int i = 0; i < static_cast<int>(party.Members().size()); i++)
+    {
+        if (party.Members()[i].hp <= 0)
+            return i;
+    }
+
+    return -1;
+}
+
+ItemType Battle::ItemAtMenuIndex(int index)
+{
+    switch (index)
+    {
+        case 0: return ItemType::Herb;
+        case 1: return ItemType::Potion;
+        case 2: return ItemType::Revive;
+    }
+
+    return ItemType::Herb;
+}
+
+bool Battle::IsReviveTargeting() const
+{
+    if (pendingAction == PendingAction::Skill)
+    {
+        const Character& active = party.Active();
+
+        if (skillMenuIndex >= 0 &&
+            skillMenuIndex < static_cast<int>(active.skills.size()))
+            return active.skills[skillMenuIndex]->IsRevive();
+    }
+    else if (pendingAction == PendingAction::Item)
+    {
+        return ItemRevives(ItemAtMenuIndex(itemMenuIndex));
+    }
+
+    return false;
 }
 
 int Battle::LivingPartyCount() const

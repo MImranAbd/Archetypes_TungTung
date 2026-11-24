@@ -52,7 +52,7 @@ void GameMap::CarveCorridor(int fromX, int fromY, int toX, int toY)
     tiles[y][x] = Tile::Floor;
 }
 
-void GameMap::Generate(int& outSpawnX, int& outSpawnY)
+void GameMap::Generate(int& outSpawnX, int& outSpawnY, bool bossFloor)
 {
     for (int y = 0; y < Rows; y++)
     {
@@ -61,6 +61,13 @@ void GameMap::Generate(int& outSpawnX, int& outSpawnY)
     }
 
     pickups.clear();
+    bossLayout = false;
+
+    if (bossFloor)
+    {
+        GenerateBossLayout(outSpawnX, outSpawnY);
+        return;
+    }
 
     std::vector<Room> rooms;
     const int targetRooms = GetRandomValue(6, 9);
@@ -181,6 +188,32 @@ void GameMap::Generate(int& outSpawnX, int& outSpawnY)
 
     outSpawnX = spawnX;
     outSpawnY = spawnY;
+}
+
+void GameMap::GenerateBossLayout(int& outSpawnX, int& outSpawnY)
+{
+    CarveRoom({ 14, 4, 20, 20 });
+    CarveRoom({ 2, 11, 8, 6 });
+    CarveRoom({ 36, 8, 10, 11 });
+    CarveRoom({ 35, 1, 8, 5 });
+
+    CarveCorridor(9, 13, 14, 13);
+    CarveCorridor(33, 13, 36, 13);
+    CarveCorridor(38, 5, 38, 8);
+
+    spawnX = 41;
+    spawnY = 13;
+    exitX = 5;
+    exitY = 13;
+    bossLayout = true;
+
+    outSpawnX = spawnX;
+    outSpawnY = spawnY;
+}
+
+bool GameMap::IsBossLayout() const
+{
+    return bossLayout;
 }
 
 int GameMap::GetExitX() const

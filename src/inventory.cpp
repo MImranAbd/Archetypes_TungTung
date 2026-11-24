@@ -6,6 +6,7 @@ const char* ItemName(ItemType type)
     {
         case ItemType::Herb:   return "Herb";
         case ItemType::Potion: return "Potion";
+        case ItemType::Revive: return "Revival Bead";
     }
 
     return "ITEM";
@@ -17,9 +18,20 @@ int ItemHeal(ItemType type)
     {
         case ItemType::Herb:   return 5;
         case ItemType::Potion: return 10;
+        case ItemType::Revive: return 0;
     }
 
     return 0;
+}
+
+bool ItemRevives(ItemType type)
+{
+    return type == ItemType::Revive;
+}
+
+int ItemReviveHp(ItemType type)
+{
+    return (type == ItemType::Revive) ? 10 : 0;
 }
 
 const char* ItemCategoryName(ItemCategory category)
@@ -41,6 +53,7 @@ ItemCategory ItemCategoryOf(ItemType type)
     {
         case ItemType::Herb:
         case ItemType::Potion:
+        case ItemType::Revive:
             return ItemCategory::Healing;
     }
 

@@ -18,7 +18,8 @@ namespace PauseUi
         const Rectangle panel = { 520.0f, 190.0f, 1360.0f, 700.0f };
         DrawPaperPanel(panel);
 
-        UiDrawText(TextFormat("%s  /  SKILLS", character.name),
+        UiDrawText(TextFormat("%s  /  %s  /  SKILLS", character.name,
+            RoleName(character.role)),
             (int)panel.x + 30, (int)panel.y + 24, 26, Theme::Ink, true);
 
         DrawLine((int)panel.x + 30, (int)panel.y + 70,
@@ -135,40 +136,61 @@ namespace PauseUi
             character.xp, character.xpToNext),
             (int)panel.x + 30, (int)panel.y + 82, 18, Theme::Muted);
 
-        DrawLine((int)panel.x + 30, (int)panel.y + 120,
-            (int)panel.x + (int)panel.width - 30, (int)panel.y + 120,
+        UiDrawText(RoleName(character.role), (int)panel.x + 30,
+            (int)panel.y + 106, 20, Theme::Gold, true);
+        UiDrawText(RoleDescription(character.role), (int)panel.x + 30,
+            (int)panel.y + 130, 14, Theme::Muted);
+
+        DrawLine((int)panel.x + 30, (int)panel.y + 150,
+            (int)panel.x + (int)panel.width - 30, (int)panel.y + 150,
             Fade(Theme::Ink, 0.25f));
 
         UiDrawText(TextFormat("HP    %d / %d", character.hp, character.maxHp),
-            (int)panel.x + 30, (int)panel.y + 146, 22, Theme::Ink);
+            (int)panel.x + 30, (int)panel.y + 172, 22, Theme::Ink);
         UiDrawText(TextFormat("ATK   %d", character.attack),
-            (int)panel.x + 30, (int)panel.y + 184, 22, Theme::Ink);
+            (int)panel.x + 30, (int)panel.y + 206, 22, Theme::Ink);
         UiDrawText(TextFormat("DEF   %d", character.defense),
-            (int)panel.x + 30, (int)panel.y + 222, 22, Theme::Ink);
+            (int)panel.x + 30, (int)panel.y + 240, 22, Theme::Ink);
 
-        UiDrawText("EQUIPMENT", (int)panel.x + 30, (int)panel.y + 276, 20,
+        UiDrawText("PASSIVES", (int)panel.x + 30, (int)panel.y + 278, 20,
+            Theme::Muted, true);
+
+        int passiveY = (int)panel.y + 304;
+
+        for (int i = 0; i < RolePassiveCount(character.role); i++)
+        {
+            const Passive& passive = RolePassive(character.role, i);
+
+            UiDrawText(passive.name, (int)panel.x + 36, passiveY, 18,
+                Theme::Ink, true);
+            UiDrawText(passive.description, (int)panel.x + 36, passiveY + 18, 14,
+                Theme::Muted);
+
+            passiveY += 42;
+        }
+
+        UiDrawText("EQUIPMENT", (int)panel.x + 30, (int)panel.y + 394, 20,
             Theme::Muted, true);
         UiDrawText(GetEquipment(character.weapon).name,
-            (int)panel.x + 36, (int)panel.y + 308, 19, Theme::Ink);
+            (int)panel.x + 36, (int)panel.y + 422, 19, Theme::Ink);
         UiDrawText(GetEquipment(character.armor).name,
-            (int)panel.x + 36, (int)panel.y + 338, 19, Theme::Ink);
+            (int)panel.x + 36, (int)panel.y + 450, 19, Theme::Ink);
         UiDrawText(GetEquipment(character.accessory).name,
-            (int)panel.x + 36, (int)panel.y + 368, 19, Theme::Ink);
+            (int)panel.x + 36, (int)panel.y + 478, 19, Theme::Ink);
 
-        UiDrawText("SKILLS", (int)panel.x + 30, (int)panel.y + 420, 20,
+        UiDrawText("SKILLS", (int)panel.x + 30, (int)panel.y + 500, 20,
             Theme::Muted, true);
-
-        int skillY = (int)panel.y + 452;
 
         for (int i = 0; i < static_cast<int>(character.skills.size()); i++)
         {
             const Skill& skill = *character.skills[i];
             const bool unlocked = character.level >= skill.GetLevelRequired();
+            const int column = (i < 5) ? 0 : 1;
+            const int row = (i < 5) ? i : (i - 5);
+            const int skillY = (int)panel.y + 522 + row * 20;
 
-            UiDrawText(skill.GetName(), (int)panel.x + 36, skillY, 18,
-                unlocked ? Theme::Ink : Theme::Muted);
-
-            skillY += 30;
+            UiDrawText(skill.GetName(), (int)panel.x + 36 + column * 270,
+                skillY, 16, unlocked ? Theme::Ink : Theme::Muted);
         }
 
         const Rectangle nameStrip = {
@@ -212,7 +234,7 @@ namespace PauseUi
             "MENU         W/S SELECT      J / ENTER CONFIRM      K / ESC BACK",
             "ITEM         A/D CATEGORY      W/S ITEM      J TARGET      K BACK",
             "EQUIP        W/S MEMBER > SLOT > ITEM      J CONFIRM      K BACK",
-            "DEBUG        F9 TELEPORT TO FLOOR 100",
+            "DEBUG        F9 TELEPORT TO FLOOR 50",
         };
 
         int y = (int)panel.y + 148;

@@ -122,6 +122,9 @@ namespace PauseUi
             UiDrawText(TextFormat("LV %d", member.level),
                 x + 90, y + i * rowHeight + 42, 17, Fade(WHITE, 0.72f));
 
+            UiDrawText(RoleName(member.role), x + 160,
+                y + i * rowHeight + 44, 13, Fade(WHITE, 0.70f), true);
+
             DrawBar((float)(x + 90), (float)(y + i * rowHeight + 68), 200.0f, 9.0f,
                 (member.maxHp > 0) ? (float)member.hp / member.maxHp : 0.0f,
                 Theme::Green);
