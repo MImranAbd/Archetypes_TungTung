@@ -187,7 +187,7 @@ namespace PauseUi
             const bool unlocked = character.level >= skill.GetLevelRequired();
             const int column = (i < 5) ? 0 : 1;
             const int row = (i < 5) ? i : (i - 5);
-            const int skillY = (int)panel.y + 522 + row * 20;
+            const int skillY = (int)panel.y + 518 + row * 20;
 
             UiDrawText(skill.GetName(), (int)panel.x + 36 + column * 270,
                 skillY, 16, unlocked ? Theme::Ink : Theme::Muted);

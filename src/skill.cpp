@@ -61,6 +61,11 @@ bool Skill::IsRevive() const
     return kind == SkillKind::Revive;
 }
 
+bool Skill::IsSelfCast() const
+{
+    return kind == SkillKind::Charge || kind == SkillKind::Concentrate;
+}
+
 bool Skill::IsPartyBuff() const
 {
     return kind == SkillKind::BuffAttack ||
@@ -266,6 +271,18 @@ MediaramaSkill::MediaramaSkill()
 RecarmSkill::RecarmSkill()
     : Skill("Recarm", SkillKind::Revive, Element::Light, 10, 4,
         "Revives one fallen ally with 10 HP.")
+{
+}
+
+ChargeSkill::ChargeSkill()
+    : Skill("Charge", SkillKind::Charge, Element::Physical, 0, 4,
+        "Doubles the damage of the next Physical attack.")
+{
+}
+
+ConcentrateSkill::ConcentrateSkill()
+    : Skill("Concentrate", SkillKind::Concentrate, Element::Light, 0, 4,
+        "Doubles the damage of the next elemental attack.")
 {
 }
 

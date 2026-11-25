@@ -158,24 +158,22 @@ void Battle::ResolveEnemyAttack()
     const std::string enemyName = "E" + std::to_string(enemyTurnIndex + 1);
 
     if (bossSummonPending &&
-        enemies[enemyTurnIndex].GetKind() == EnemyKind::Necromancer &&
-        static_cast<int>(enemies.size()) < 5)
+        enemies[enemyTurnIndex].GetKind() == EnemyKind::Necromancer)
     {
         bossSummonPending = false;
+        bossChargePending = false;
 
-        const int skeletonHp = battleEnemyHp + floorNumber / 4 +
-            GetEnemyDef(EnemyKind::Skeleton).hpBonus;
-
-        enemies.emplace_back(0, 0, skeletonHp, EnemyKind::Skeleton);
-        weaknessKnown.resize(enemies.size(), false);
+        const bool smirk = enemySmirk;
+        const bool anxious = enemyAnxious;
+        enemySmirk = false;
+        enemyAnxious = false;
 
         actionCinematic = true;
         actionWideParty = false;
         actionAttackPose = true;
         actionTexts.clear();
-        supportFlashTimer = Battle::supportFlashDuration;
-        supportFlashColor = { 160, 120, 220, 255 };
-        actionBanner = "Enemy Summon";
+        supportFlashTimer = 0.0f;
+        actionBanner = "Enemy Massive Sweep";
         actionBannerTimer = Battle::actionDuration;
         lastActorParty = -1;
         lastActorEnemy = enemyTurnIndex;
@@ -183,13 +181,265 @@ void Battle::ResolveEnemyAttack()
         lastActionTargetOnParty = false;
         lastActionTargetIndex = -1;
 
-        AddActionText("SUMMON", enemyTurnIndex, false, supportFlashColor);
-        message = enemyName + " THE NECROMANCER SUMMONS A SKELETON!";
+        const int primary = livingTargets[0];
+        float hitChance = 0.85f;
+
+        if (smirk) hitChance += 0.10f;
+        if (anxious) hitChance -= 0.25f;
+        if (party.Members()[primary].smirk) hitChance -= 0.30f;
+        if (party.Members()[primary].anxious) hitChance += 0.20f;
+        if (partyBuffs[primary].evasionUp.stacks > 0)
+            hitChance -= 0.15f * partyBuffs[primary].evasionUp.stacks;
+        if (enemyBuffs[enemyTurnIndex].enemyAccuracyDown.stacks > 0)
+            hitChance -= 0.15f * enemyBuffs[enemyTurnIndex].enemyAccuracyDown.stacks;
+
+        if (hitChance < 0.05f) hitChance = 0.05f;
+        if (hitChance > 0.99f) hitChance = 0.99f;
+
+        int totalDamage = 0;
+        bool anyWeak = false;
+        bool anyCrit = false;
+        bool flashed = false;
+        bool chargedSweep = false;
+        std::vector<int> fallen;
+
+        if (!Chance(hitChance))
+        {
+            message = enemyName + " THE NECROMANCER'S MASSIVE SWEEP MISSES!";
+        }
+        else
+        {
+            for (int targetIndex : livingTargets)
+            {
+                Character& target = party.Members()[targetIndex];
+
+                float critChance = 0.10f;
+                if (smirk) critChance += 0.40f;
+                if (anxious) critChance -= 0.05f;
+                if (critChance < 0.0f) critChance = 0.0f;
+
+                const bool crit = Chance(critChance);
+                const bool weak = (Element::Physical == target.weakness);
+
+                int baseDamage = enemyBaseDamage + def.attackBonus;
+                baseDamage = baseDamage / 2 + 2;
+
+                int damage = baseDamage;
+                damage -= target.defense / 3;
+
+                if (enemyBuffs[enemyTurnIndex].enemyAttackDown.stacks > 0)
+                    damage -= enemyBuffs[enemyTurnIndex].enemyAttackDown.stacks;
+
+                if (enemyBuffs[enemyTurnIndex].attackUp.stacks > 0)
+                    damage += enemyBuffs[enemyTurnIndex].attackUp.stacks;
+
+                if (partyBuffs[targetIndex].defenseUp.stacks > 0)
+                    damage -= partyBuffs[targetIndex].defenseUp.stacks;
+
+                if (partyBuffs[targetIndex].enemyDefenseDown.stacks > 0)
+                    damage += partyBuffs[targetIndex].enemyDefenseDown.stacks;
+
+                if (defending) damage -= 3;
+                if (target.role == Role::Warrior) damage -= 1;
+
+                damage = damage * 5 / 4;
+
+                if (bossCharged)
+                {
+                    damage *= 2;
+                    chargedSweep = true;
+                }
+
+                if (weak) damage += 1;
+                if (crit) damage += 1;
+                if (damage < 1) damage = 1;
+
+                target.hp -= damage;
+                if (target.hp < 0) target.hp = 0;
+
+                AddDamagePopup(targetIndex, true, damage, crit, weak);
+
+                if (!flashed)
+                {
+                    hitFlashTimer = Battle::hitFlashDuration;
+                    hitFlashTarget = targetIndex;
+                    hitFlashOnParty = true;
+                    flashed = true;
+                }
+
+                if (target.hp <= 0)
+                {
+                    target.smirk = false;
+                    target.anxious = false;
+                    target.charged = false;
+                    target.concentrated = false;
+                    fallen.push_back(targetIndex);
+                }
+
+                totalDamage += damage;
+                anyWeak = anyWeak || weak;
+                anyCrit = anyCrit || crit;
+
+                std::cout << "[ENEMY] " << enemyName << " MASSIVE SWEEP -> "
+                          << target.name << " " << damage << " DMG"
+                          << (weak ? " WEAK" : "") << (crit ? " CRIT" : "") << "\n";
+            }
+
+            bossCharged = false;
+
+            std::string prefix;
+            if (anyWeak) prefix += "WEAK! ";
+            if (anyCrit) prefix += "CRITICAL! ";
+
+            message = prefix + enemyName
+                + " THE NECROMANCER'S MASSIVE SWEEP HITS THE PARTY FOR "
+                + std::to_string(totalDamage) + " TOTAL DAMAGE!";
+
+            if (chargedSweep)
+                message += " CHARGED SWEEP!";
+
+            for (int targetIndex : fallen)
+                message += " " + std::string(party.Members()[targetIndex].name) + " FALLS!";
+
+            if ((anyWeak || anyCrit) && Chance(smirkChance))
+            {
+                enemySmirk = true;
+                message += " ENEMY SMIRK!";
+            }
+        }
+
+        bossCharged = false;
+
+        const int skeletonHp = battleEnemyHp + floorNumber / 4 +
+            GetEnemyDef(EnemyKind::Skeleton).hpBonus;
+
+        int added = 0;
+
+        for (int i = 1; i < 5 && added < 4; i++)
+        {
+            if (i < static_cast<int>(enemies.size()))
+            {
+                if (enemies[i].IsAlive()) continue;
+
+                enemies[i].Reset(0, 0, skeletonHp);
+                enemies[i].SetKind(EnemyKind::Skeleton);
+                enemyBuffs[i] = BattleBuffs();
+            }
+            else
+            {
+                enemies.emplace_back(0, 0, skeletonHp, EnemyKind::Skeleton);
+            }
+
+            weaknessKnown.resize(enemies.size(), false);
+            weaknessKnown[i] = false;
+            added++;
+        }
+
+        if (added > 0)
+        {
+            supportFlashTimer = Battle::supportFlashDuration;
+            supportFlashColor = { 160, 120, 220, 255 };
+            AddActionText("SUMMON", enemyTurnIndex, false, supportFlashColor);
+            message += " IT SUMMONS " + std::to_string(added) + " SKELETON"
+                + (added > 1 ? "S!" : "!");
+        }
+        else
+        {
+            message += " NO MORE SKELETONS ANSWER.";
+        }
+
+        enemyPoints = 0;
+        LogState();
+
+        if (party.IsWipedOut())
+        {
+            phase = Phase::Defeat;
+            message = "THE PARTY FALLS...";
+            std::cout << "=== DEFEAT ===\n";
+            return;
+        }
+
+        StartPlayerTurn();
+        return;
+    }
+
+    if (bossMatarukajaPending &&
+        enemies[enemyTurnIndex].GetKind() == EnemyKind::Necromancer)
+    {
+        bossMatarukajaPending = false;
+        bossChargePending = false;
+        bossSummonPending = false;
+
+        const Color supportColor = { 235, 170, 95, 255 };
+
+        actionCinematic = true;
+        actionWideParty = false;
+        actionAttackPose = false;
+        actionTexts.clear();
+        supportFlashTimer = Battle::supportFlashDuration;
+        supportFlashColor = supportColor;
+        actionBanner = "Enemy Matarukaja";
+        actionBannerTimer = Battle::actionDuration;
+        lastActorParty = -1;
+        lastActorEnemy = enemyTurnIndex;
+        lastActionHasTarget = false;
+        lastActionTargetOnParty = false;
+        lastActionTargetIndex = -1;
+
+        for (int i = 0; i < static_cast<int>(enemies.size()); i++)
+        {
+            if (!enemies[i].IsAlive()) continue;
+
+            ApplyBuff(enemyBuffs[i].attackUp);
+            AddActionText("ATK UP", i, false, supportColor);
+        }
+
+        SetBuffEffect(SkillKind::BuffAttack, false, -1);
+        message = enemyName + " THE NECROMANCER CASTS MATARUKAJA!";
 
         SpendEnemyFullPoints();
-        SpendEnemyHalfPoint(false);
-        if (enemyPoints < 0) enemyPoints = 0;
+        bossChargePending = (enemyPoints > 0);
+        LogState();
 
+        if (enemyPoints <= 0)
+        {
+            StartPlayerTurn();
+            return;
+        }
+
+        turnTimer = 1.4f;
+        return;
+    }
+
+    if (bossChargePending &&
+        enemies[enemyTurnIndex].GetKind() == EnemyKind::Necromancer)
+    {
+        bossChargePending = false;
+        bossMatarukajaPending = false;
+        bossSummonPending = false;
+
+        const Color supportColor = { 235, 120, 90, 255 };
+
+        actionCinematic = true;
+        actionWideParty = false;
+        actionAttackPose = false;
+        actionTexts.clear();
+        supportFlashTimer = Battle::supportFlashDuration;
+        supportFlashColor = supportColor;
+        actionBanner = "Enemy Charge";
+        actionBannerTimer = Battle::actionDuration;
+        lastActorParty = -1;
+        lastActorEnemy = enemyTurnIndex;
+        lastActionHasTarget = false;
+        lastActionTargetOnParty = false;
+        lastActionTargetIndex = -1;
+
+        bossCharged = true;
+        AddActionText("CHARGE", enemyTurnIndex, false, supportColor);
+        SetBuffEffect(SkillKind::BuffAttack, false, enemyTurnIndex);
+        message = enemyName + " THE NECROMANCER CHARGES ITS POWER!";
+
+        SpendEnemyFullPoints();
         LogState();
 
         if (enemyPoints <= 0)
@@ -212,6 +462,8 @@ void Battle::ResolveEnemyAttack()
     }
 
     bossSummonPending = false;
+    bossMatarukajaPending = false;
+    bossChargePending = false;
 
     int weights[3] = { 40, 0, 0 };
 
@@ -649,6 +901,7 @@ void Battle::ResolveEnemyAttack()
             bool anyWeak = false;
             bool anyCrit = false;
             bool flashed = false;
+            bool chargedStrike = false;
             std::vector<int> fallen;
 
             for (int targetIndex : targets)
@@ -685,6 +938,17 @@ void Battle::ResolveEnemyAttack()
 
                 if (defending) damage -= 3;
                 if (target.role == Role::Warrior) damage -= 1;
+
+                if (action.element == Element::Physical)
+                    damage = damage * 5 / 4;
+
+                if (bossCharged && action.element == Element::Physical &&
+                    enemies[enemyTurnIndex].GetKind() == EnemyKind::Necromancer)
+                {
+                    damage += 8;
+                    chargedStrike = true;
+                }
+
                 if (weak) damage += 1;
                 if (crit) damage += 1;
                 if (damage < 1) damage = 1;
@@ -706,6 +970,8 @@ void Battle::ResolveEnemyAttack()
                 {
                     target.smirk = false;
                     target.anxious = false;
+                    target.charged = false;
+                    target.concentrated = false;
                     fallen.push_back(targetIndex);
                 }
 
@@ -760,6 +1026,14 @@ void Battle::ResolveEnemyAttack()
             {
                 enemySmirk = true;
                 message += " ENEMY SMIRK!";
+            }
+
+            if (chargedStrike)
+            {
+                bossCharged = false;
+                message += " CHARGED STRIKE!";
+                AddActionText("CHARGED!", enemyTurnIndex, false,
+                    { 235, 120, 90, 255 });
             }
 
             int cost = action.cost;

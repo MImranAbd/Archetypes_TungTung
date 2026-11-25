@@ -91,6 +91,10 @@ namespace
                 return { 120, 210, 140, 255 };
             case SkillKind::Revive:
                 return { 235, 210, 120, 255 };
+            case SkillKind::Charge:
+                return { 235, 120, 90, 255 };
+            case SkillKind::Concentrate:
+                return { 140, 160, 235, 255 };
             case SkillKind::BuffAttack:
             case SkillKind::BuffAttackAll:
                 return { 225, 130, 95, 255 };
@@ -272,9 +276,15 @@ void Battle::UseSkill(int skillIndex)
     lastActionTargetIndex = -1;
 
     const bool reviving = skill.IsRevive();
+    const bool selfCast = skill.IsSelfCast();
     int allyTarget = selectedAlly;
 
-    if (allyTarget < 0 || allyTarget >= static_cast<int>(party.Members().size()) ||
+    if (selfCast)
+    {
+        allyTarget = party.GetActiveIndex();
+        selectedAlly = allyTarget;
+    }
+    else if (allyTarget < 0 || allyTarget >= static_cast<int>(party.Members().size()) ||
         (reviving ? party.Members()[allyTarget].hp > 0
             : party.Members()[allyTarget].hp <= 0))
     {
@@ -397,6 +407,32 @@ void Battle::UseSkill(int skillIndex)
                 message = who + " casts " + skill.GetName() + ". " + target.name
                     + " returns with " + std::to_string(reviveHp) + " HP!";
             }
+        } break;
+
+        case SkillKind::Charge:
+        {
+            actor.charged = true;
+
+            lastActionHasTarget = true;
+            lastActionTargetOnParty = true;
+            lastActionTargetIndex = party.GetActiveIndex();
+
+            AddActionText("CHARGE", party.GetActiveIndex(), true, supportColor);
+            SetBuffEffect(SkillKind::Charge, true, party.GetActiveIndex());
+            message = who + " charges power. The next Physical attack is boosted!";
+        } break;
+
+        case SkillKind::Concentrate:
+        {
+            actor.concentrated = true;
+
+            lastActionHasTarget = true;
+            lastActionTargetOnParty = true;
+            lastActionTargetIndex = party.GetActiveIndex();
+
+            AddActionText("FOCUS", party.GetActiveIndex(), true, supportColor);
+            SetBuffEffect(SkillKind::Concentrate, true, party.GetActiveIndex());
+            message = who + " concentrates. The next elemental attack is boosted!";
         } break;
 
         case SkillKind::BuffAttack:
@@ -732,6 +768,14 @@ void Battle::PlayerAttack(const Skill& skill)
 
     Enemy& target = enemies[selectedTarget];
     const int actorIndex = party.GetActiveIndex();
+    const bool physicalSkill = (skill.GetElement() == Element::Physical);
+    const bool chargedAttack = physicalSkill ? actor.charged : actor.concentrated;
+
+    if (chargedAttack)
+    {
+        if (physicalSkill) actor.charged = false;
+        else actor.concentrated = false;
+    }
 
     actionCinematic = true;
     actionWideParty = false;
@@ -811,6 +855,9 @@ void Battle::PlayerAttack(const Skill& skill)
             damage += 1;
         if (actor.role == Role::Priest && skill.GetElement() == Element::Light)
             damage += 1;
+        if (skill.GetElement() == Element::Physical)
+            damage = damage * 5 / 4;
+        if (chargedAttack) damage *= 2;
         if (weak) damage += 1;
         if (crit) damage += 1;
         if (damage < 1) damage = 1;
@@ -831,6 +878,15 @@ void Battle::PlayerAttack(const Skill& skill)
 
         message = prefix + actor.name + " uses " + skill.GetName() + " on "
             + targetName + ": " + std::to_string(damage) + " damage.";
+
+        if (chargedAttack)
+        {
+            message += physicalSkill ? " CHARGED STRIKE!" : " CONCENTRATED STRIKE!";
+            AddActionText(physicalSkill ? "CHARGED!" : "FOCUSED!",
+                selectedTarget, false,
+                physicalSkill ? Color{ 235, 120, 90, 255 }
+                    : Color{ 140, 160, 235, 255 });
+        }
 
         if ((weak || crit) && Chance(smirkChance))
         {
@@ -877,6 +933,14 @@ void Battle::PlayerAttackAll(const Skill& skill)
 {
     Character& actor = party.Active();
     const int actorIndex = party.GetActiveIndex();
+    const bool physicalSkill = (skill.GetElement() == Element::Physical);
+    const bool chargedAttack = physicalSkill ? actor.charged : actor.concentrated;
+
+    if (chargedAttack)
+    {
+        if (physicalSkill) actor.charged = false;
+        else actor.concentrated = false;
+    }
 
     actionCinematic = true;
     actionWideParty = false;
@@ -975,6 +1039,9 @@ void Battle::PlayerAttackAll(const Skill& skill)
                 damage += 1;
             if (actor.role == Role::Priest && skill.GetElement() == Element::Light)
                 damage += 1;
+            if (skill.GetElement() == Element::Physical)
+                damage = damage * 5 / 4;
+            if (chargedAttack) damage *= 2;
             if (weak) damage += 1;
             if (crit) damage += 1;
             if (damage < 1) damage = 1;
@@ -1009,6 +1076,14 @@ void Battle::PlayerAttackAll(const Skill& skill)
 
         message = prefix + actor.name + " uses " + skill.GetName()
             + " on all foes: " + std::to_string(totalDamage) + " total damage.";
+
+        if (chargedAttack)
+        {
+            message += physicalSkill ? " CHARGED STRIKE!" : " CONCENTRATED STRIKE!";
+            AddActionText(physicalSkill ? "CHARGED!" : "FOCUSED!", actorIndex, true,
+                physicalSkill ? Color{ 235, 120, 90, 255 }
+                    : Color{ 140, 160, 235, 255 });
+        }
 
         if ((anyWeak || anyCrit) && Chance(smirkChance))
         {

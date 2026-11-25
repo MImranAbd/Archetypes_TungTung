@@ -47,6 +47,8 @@ struct Character
     EquipmentId accessory;
     bool smirk;
     bool anxious;
+    bool charged;
+    bool concentrated;
     SkillList skills;
 };
 

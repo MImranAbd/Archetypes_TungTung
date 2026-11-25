@@ -11,6 +11,8 @@ enum class SkillKind
     Heal,
     HealAll,
     Revive,
+    Charge,
+    Concentrate,
     BuffAttack,
     BuffAttackAll,
     BuffDefense,
@@ -41,6 +43,7 @@ public:
     bool IsAttackAll() const;
     bool IsHealAll() const;
     bool IsRevive() const;
+    bool IsSelfCast() const;
     bool IsPartyBuff() const;
     bool IsPartyBuffAll() const;
     bool IsEnemyDebuff() const;
@@ -223,6 +226,18 @@ class RecarmSkill : public Skill
 {
 public:
     RecarmSkill();
+};
+
+class ChargeSkill : public Skill
+{
+public:
+    ChargeSkill();
+};
+
+class ConcentrateSkill : public Skill
+{
+public:
+    ConcentrateSkill();
 };
 
 class HeatWaveSkill : public Skill

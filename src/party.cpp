@@ -42,7 +42,8 @@ SkillList SkillsForRole(Role role)
                 std::make_shared<MazioSkill>(),
                 std::make_shared<MahamaSkill>(),
                 std::make_shared<MamudoSkill>(),
-                std::make_shared<MasukukajaSkill>()
+                std::make_shared<MasukukajaSkill>(),
+                std::make_shared<ConcentrateSkill>()
             };
 
         case Role::Thief:
@@ -63,7 +64,8 @@ SkillList SkillsForRole(Role role)
                 std::make_shared<AgiSkill>(),
                 std::make_shared<AgilaoSkill>(),
                 std::make_shared<MaragionSkill>(),
-                std::make_shared<TarukajaSkill>()
+                std::make_shared<TarukajaSkill>(),
+                std::make_shared<ChargeSkill>()
             };
 
         case Role::Priest:
@@ -148,6 +150,8 @@ namespace
         character.accessory = EquipmentId::None;
         character.smirk = false;
         character.anxious = false;
+        character.charged = false;
+        character.concentrated = false;
         character.skills = SkillsForRole(role);
 
         return character;
@@ -270,6 +274,8 @@ void Party::RestoreAll()
         member.hp = member.maxHp;
         member.smirk = false;
         member.anxious = false;
+        member.charged = false;
+        member.concentrated = false;
     }
 
     activeIndex = 0;
@@ -279,18 +285,19 @@ void Party::ReviveFallenOneHp()
 {
     for (Character& member : members)
     {
+        member.smirk = false;
+        member.anxious = false;
+        member.charged = false;
+        member.concentrated = false;
+
         if (member.hp <= 0)
-        {
             member.hp = 1;
-            member.smirk = false;
-            member.anxious = false;
-        }
     }
 }
 
 int Party::XpForNextLevel(int level)
 {
-    return 20 + (level - 1) * 15;
+    return 20 + (level - 1) * 8;
 }
 
 void Party::RecalculateStats(Character& member)

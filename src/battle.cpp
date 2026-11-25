@@ -56,6 +56,9 @@ Battle::Battle(Party& party, Inventory& inventory, int floorNumber,
     , actionAttackPose(false)
     , pendingVictory(false)
     , bossSummonPending(false)
+    , bossMatarukajaPending(false)
+    , bossChargePending(false)
+    , bossCharged(false)
     , supportFlashTimer(0.0f)
     , supportFlashColor(WHITE)
     , actionTexts()
@@ -64,8 +67,8 @@ Battle::Battle(Party& party, Inventory& inventory, int floorNumber,
     , lastActionHasTarget(false)
     , lastActionTargetOnParty(false)
     , lastActionTargetIndex(-1)
-    , xpReward(10 + floorNumber * 3)
-    , moneyReward(15 + floorNumber * 4)
+    , xpReward((50 + floorNumber * 6) * (floorNumber % 10 == 0 ? 2 : 1))
+    , moneyReward(40 + floorNumber * 4)
     , itemReward(1)
     , equipmentReward(false)
     , equipmentRewardId(EquipmentId::None)
@@ -248,7 +251,7 @@ void Battle::Update()
 
                         if (skill.IsRevive() && FindFallenAlly() < 0)
                             message = "No fallen ally to revive.";
-                        else if (skill.IsAllTarget())
+                        else if (skill.IsAllTarget() || skill.IsSelfCast())
                             UseSkill(skillMenuIndex);
                         else
                             BeginTargetSelection(PendingAction::Skill);
@@ -410,9 +413,13 @@ void Battle::StartEnemyTurn()
         return;
     }
 
-    bossSummonPending = (floorNumber >= 50 &&
-        enemies[enemyTurnIndex].GetKind() == EnemyKind::Necromancer &&
-        turnNumber % 3 == 0);
+    const bool necromancerTurn = (floorNumber >= 50 &&
+        enemies[enemyTurnIndex].GetKind() == EnemyKind::Necromancer);
+
+    bossSummonPending = necromancerTurn && turnNumber % 3 == 0;
+    bossMatarukajaPending = necromancerTurn && !bossSummonPending &&
+        turnNumber % 2 == 0;
+    bossChargePending = false;
 
     turnTimer = 1.4f;
 

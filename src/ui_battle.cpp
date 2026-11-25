@@ -274,6 +274,12 @@ void UI::DrawBattle(Battle& battle)
         if (fxKind == SkillKind::Heal ||
             fxKind == SkillKind::HealAll)
             buffColor = { 120, 210, 140, 255 };
+        else if (fxKind == SkillKind::Revive)
+            buffColor = { 235, 210, 120, 255 };
+        else if (fxKind == SkillKind::Charge)
+            buffColor = { 235, 120, 90, 255 };
+        else if (fxKind == SkillKind::Concentrate)
+            buffColor = { 140, 160, 235, 255 };
         else if (fxKind == SkillKind::BuffDefense ||
             fxKind == SkillKind::BuffDefenseAll)
             buffColor = Theme::Green;
@@ -454,6 +460,9 @@ void UI::DrawBattle(Battle& battle)
         }
     }
 
+    int partyTextCount[4] = {};
+    int enemyTextCount[5] = {};
+
     for (const ActionText& text : battle.GetActionTexts())
     {
         if (text.target < 0) continue;
@@ -475,14 +484,21 @@ void UI::DrawBattle(Battle& battle)
                 position = actionTargetPos;
         }
 
+        const int stack = text.onParty
+            ? partyTextCount[text.target]++
+            : enemyTextCount[text.target]++;
+        const bool bossText = !text.onParty && battle.IsElite() &&
+            text.target == 0;
+
         float fade = text.timer / Battle::supportTextDuration;
         if (fade < 0.0f) fade = 0.0f;
         if (fade > 1.0f) fade = 1.0f;
 
         const int rise = static_cast<int>((1.0f - fade) * 36.0f);
+        const int baseOffset = bossText ? 300 : (text.onParty ? 118 : 100);
         const int x = static_cast<int>(position.x) + (text.onParty ? 28 : 38);
-        const int y = static_cast<int>(position.y) -
-            (text.onParty ? 118 : 100) - rise;
+        const int y = static_cast<int>(position.y) - baseOffset - rise -
+            stack * 22;
 
         DrawCentered(text.text.c_str(), x, y, 24,
             Fade(text.color, fade), true);

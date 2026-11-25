@@ -207,6 +207,9 @@ private:
     bool actionAttackPose;
     bool pendingVictory;
     bool bossSummonPending;
+    bool bossMatarukajaPending;
+    bool bossChargePending;
+    bool bossCharged;
     float supportFlashTimer;
     Color supportFlashColor;
     std::vector<ActionText> actionTexts;

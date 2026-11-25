@@ -425,6 +425,12 @@ namespace BattleUi
                 UiDrawText("Smirk", cardX + cardWidth - 80, cardY + 8, 16, Theme::Green, true);
             else if (anxious)
                 UiDrawText("Anxious", cardX + cardWidth - 90, cardY + 8, 16, Theme::Purple, true);
+            else if (member.charged)
+                UiDrawText("Charged", cardX + cardWidth - 80, cardY + 8, 16,
+                    Theme::Gold, true);
+            else if (member.concentrated)
+                UiDrawText("Focused", cardX + cardWidth - 80, cardY + 8, 16,
+                    Theme::Blue, true);
 
             if (member.hp <= 0)
             {
