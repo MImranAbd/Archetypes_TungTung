@@ -104,14 +104,8 @@ namespace UiInternal
             const Rectangle frameSource = {
                 0.0f, 0.0f, (float)cropWidth, (float)cropHeight
             };
-            const Rectangle dest = {
-                (float)destX,
-                (float)destY,
-                (float)cropWidth,
-                (float)cropHeight
-            };
-
-            ImageDraw(&strip, frame, frameSource, dest, WHITE);
+            ImageDrawImageRec(&strip, frame, frameSource,
+                { (float)destX, (float)destY }, WHITE);
             UnloadImage(frame);
         };
 

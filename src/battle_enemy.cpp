@@ -1,5 +1,6 @@
 #include "battle.h"
 #include "battle_internal.h"
+#include "audio.h"
 #include <raylib.h>
 #include <iostream>
 #include <string>
@@ -205,10 +206,12 @@ void Battle::ResolveEnemyAttack()
 
         if (!Chance(hitChance))
         {
+            Audio::PlayMiss();
             message = enemyName + " THE NECROMANCER'S MASSIVE SWEEP MISSES!";
         }
         else
         {
+            Audio::PlayAttack(Element::Physical, 0, true);
             for (int targetIndex : livingTargets)
             {
                 Character& target = party.Members()[targetIndex];
@@ -366,6 +369,7 @@ void Battle::ResolveEnemyAttack()
     if (bossMatarukajaPending &&
         enemies[enemyTurnIndex].GetKind() == EnemyKind::Necromancer)
     {
+        Audio::Play(Audio::Effect::EnemyBuffing);
         bossMatarukajaPending = false;
         bossChargePending = false;
         bossSummonPending = false;
@@ -414,6 +418,7 @@ void Battle::ResolveEnemyAttack()
     if (bossChargePending &&
         enemies[enemyTurnIndex].GetKind() == EnemyKind::Necromancer)
     {
+        Audio::Play(Audio::Effect::EnemyBuffing);
         bossChargePending = false;
         bossMatarukajaPending = false;
         bossSummonPending = false;
@@ -760,6 +765,7 @@ void Battle::ResolveEnemyAttack()
 
             case EnemyActionKind::BuffSelf:
             {
+                Audio::Play(Audio::Effect::EnemyBuffing);
                 BattleBuff* buff = EnemyBuffForStat(
                     enemyBuffs[enemyTurnIndex], action.stat);
 
@@ -776,6 +782,7 @@ void Battle::ResolveEnemyAttack()
 
             case EnemyActionKind::BuffAllies:
             {
+                Audio::Play(Audio::Effect::EnemyBuffing);
                 for (int i = 0; i < static_cast<int>(enemies.size()); i++)
                 {
                     if (!enemies[i].IsAlive()) continue;
@@ -882,6 +889,7 @@ void Battle::ResolveEnemyAttack()
 
         if (!Chance(hitChance))
         {
+            Audio::PlayMiss();
             SpendEnemyMissPoints();
 
             message = enemyName + " uses " + action.name + " - MISS!";
@@ -897,6 +905,8 @@ void Battle::ResolveEnemyAttack()
         }
         else
         {
+            Audio::PlayAttack(action.element, action.power,
+                action.kind == EnemyActionKind::DamageAll);
             int totalDamage = 0;
             bool anyWeak = false;
             bool anyCrit = false;

@@ -11,6 +11,22 @@
 #include "equipment.h"
 #include "map.h"
 #include "ui.h"
+#include "audio.h"
+
+namespace
+{
+    bool IsUiSelectionPressed()
+    {
+        return IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
+            IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
+            IsKeyPressed(KEY_W) || IsKeyPressed(KEY_A) ||
+            IsKeyPressed(KEY_S) || IsKeyPressed(KEY_D) ||
+            IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) ||
+            IsKeyPressed(KEY_J) || IsKeyPressed(KEY_K) ||
+            IsKeyPressed(KEY_ESCAPE) ||
+            IsMouseButtonPressed(MOUSE_BUTTON_LEFT);
+    }
+}
 
 enum class AppState
 {
@@ -61,6 +77,7 @@ int main()
 
     if (IsAudioDeviceReady())
     {
+        Audio::Load();
         battleMusic = LoadMusicStream("res/ost/BattleB2.mp3");
         battleMusic.looping = true;
 
@@ -392,6 +409,10 @@ int main()
 
     while (!quitRequested && !WindowShouldClose())
     {
+        if (!battle && (state == AppState::MainMenu || pauseOpen || ending) &&
+            IsUiSelectionPressed())
+            Audio::Play(Audio::Effect::Select);
+
         ui.Update(GetFrameTime()); //tunng
 
         if (battleMusicActive)
@@ -865,7 +886,12 @@ int main()
         }
         else
         {
+            const Battle::Phase previousPhase = battle->GetPhase();
             battle->Update();
+
+            if (previousPhase != Battle::Phase::Victory &&
+                battle->GetPhase() == Battle::Phase::Victory)
+                Audio::Play(Audio::Effect::Victory);
 
             if (battle->IsFinished())
             {
@@ -946,6 +972,7 @@ int main()
     if (battleMusic.frameCount > 0)
         UnloadMusicStream(battleMusic);
 
+    Audio::Unload();
     CloseAudioDevice();
 
     CloseWindow();

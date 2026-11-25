@@ -1,5 +1,6 @@
 #include "battle.h"
 #include "battle_internal.h"
+#include "audio.h"
 #include <raylib.h>
 #include <iostream>
 #include <string>
@@ -321,6 +322,7 @@ void Battle::UseSkill(int skillIndex)
     {
         case SkillKind::Heal:
         {
+            Audio::Play(Audio::Effect::Heal);
             Character& target = party.Members()[allyTarget];
             const int missing = target.maxHp - target.hp;
 
@@ -351,6 +353,7 @@ void Battle::UseSkill(int skillIndex)
 
         case SkillKind::HealAll:
         {
+            Audio::Play(Audio::Effect::Heal);
             int healedTotal = 0;
 
             for (int i = 0; i < static_cast<int>(party.Members().size()); i++)
@@ -378,6 +381,7 @@ void Battle::UseSkill(int skillIndex)
 
         case SkillKind::Revive:
         {
+            Audio::Play(Audio::Effect::Heal);
             Character& target = party.Members()[allyTarget];
 
             if (target.hp > 0)
@@ -438,6 +442,7 @@ void Battle::UseSkill(int skillIndex)
         case SkillKind::BuffAttack:
         case SkillKind::BuffAttackAll:
         {
+            Audio::Play(Audio::Effect::BuffAttack);
             int stacks = 0;
 
             for (int i = 0; i < static_cast<int>(party.Members().size()); i++)
@@ -461,6 +466,7 @@ void Battle::UseSkill(int skillIndex)
         case SkillKind::BuffDefense:
         case SkillKind::BuffDefenseAll:
         {
+            Audio::Play(Audio::Effect::BuffDefense);
             int stacks = 0;
 
             for (int i = 0; i < static_cast<int>(party.Members().size()); i++)
@@ -484,6 +490,7 @@ void Battle::UseSkill(int skillIndex)
         case SkillKind::BuffEvasion:
         case SkillKind::BuffEvasionAll:
         {
+            Audio::Play(Audio::Effect::EvasionUp);
             int stacks = 0;
 
             for (int i = 0; i < static_cast<int>(party.Members().size()); i++)
@@ -530,6 +537,7 @@ void Battle::UseSkill(int skillIndex)
         case SkillKind::DebuffDefense:
         case SkillKind::DebuffDefenseAll:
         {
+            Audio::Play(Audio::Effect::DefenseDown);
             int stacks = 0;
 
             for (int i = 0; i < static_cast<int>(enemies.size()); i++)
@@ -553,6 +561,7 @@ void Battle::UseSkill(int skillIndex)
         case SkillKind::DebuffAccuracy:
         case SkillKind::DebuffAccuracyAll:
         {
+            Audio::Play(Audio::Effect::AccuracyDown);
             int stacks = 0;
 
             for (int i = 0; i < static_cast<int>(enemies.size()); i++)
@@ -815,6 +824,7 @@ void Battle::PlayerAttack(const Skill& skill)
 
     if (!Chance(hitChance))
     {
+        Audio::PlayMiss();
         SpendPlayerMissPoints();
 
         message = actor.name + std::string(" uses ") + skill.GetName() + " on "
@@ -831,6 +841,7 @@ void Battle::PlayerAttack(const Skill& skill)
     }
     else
     {
+        Audio::PlayAttack(skill.GetElement(), skill.GetPower(), false);
         float critChance = 0.10f;
         if (smirk) critChance += 0.40f;
         if (anxious) critChance -= 0.05f;
@@ -988,6 +999,7 @@ void Battle::PlayerAttackAll(const Skill& skill)
 
     if (!Chance(hitChance))
     {
+        Audio::PlayMiss();
         SpendPlayerMissPoints();
 
         message = actor.name + std::string(" uses ") + skill.GetName()
@@ -1004,6 +1016,7 @@ void Battle::PlayerAttackAll(const Skill& skill)
     }
     else
     {
+        Audio::PlayAttack(skill.GetElement(), skill.GetPower(), true);
         int totalDamage = 0;
         bool anyWeak = false;
         bool anyCrit = false;

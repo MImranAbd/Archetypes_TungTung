@@ -1,5 +1,6 @@
 #include "battle.h"
 #include "battle_internal.h"
+#include "audio.h"
 #include <raylib.h>
 #include <iostream>
 #include <string>
@@ -149,6 +150,16 @@ void Battle::Update()
     if (finished) return;
 
     const float delta = GetFrameTime();
+
+    if (phase == Phase::PlayerTurn && actionBannerTimer <= 0.0f &&
+        (IsKeyPressed(KEY_UP) || IsKeyPressed(KEY_DOWN) ||
+            IsKeyPressed(KEY_LEFT) || IsKeyPressed(KEY_RIGHT) ||
+            IsKeyPressed(KEY_W) || IsKeyPressed(KEY_A) ||
+            IsKeyPressed(KEY_S) || IsKeyPressed(KEY_D) ||
+            IsKeyPressed(KEY_ENTER) || IsKeyPressed(KEY_SPACE) ||
+            IsKeyPressed(KEY_J) || IsKeyPressed(KEY_K) ||
+            IsKeyPressed(KEY_ESCAPE)))
+        Audio::Play(Audio::Effect::SelectInBattle);
 
     if (slashTimer > 0.0f)
         slashTimer -= delta;
